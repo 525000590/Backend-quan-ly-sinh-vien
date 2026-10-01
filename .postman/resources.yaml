@@ -1,0 +1,12 @@
+# Use this workspace to collaborate
+workspace:
+  id: 5021b402-ebba-4efd-868f-862fb84c71ee
+
+localResources:
+  collections: []
+
+# Each entry here maps a local resource to one or more corresponding objects in Postman Cloud
+
+cloudResources:
+  collections:
+    ../postman/collections/Backend Sinh Vien - Chuong 2: c5613b14-3a51-49ac-ae71-311abf0124df

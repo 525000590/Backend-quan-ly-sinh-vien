@@ -1,0 +1,402 @@
+{
+  "info": {
+    "_postman_id": "c205c5d5-24a9-408a-b071-5b67daebb2ff",
+    "name": "Backend Sinh Vien - Chuong 2",
+    "description": "Postman Collection kiểm thử API Backend Quản lý sinh viên (Node.js + Express 5 + TypeScript) theo bài thực hành Chương 2.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - Server hoạt động (T01)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/",
+          "host": ["{{baseUrl}}"],
+          "path": [""]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status la 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test(\"Server hoat dong dung thong diep\", function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body.success).to.eql(true);",
+              "    pm.expect(body.message).to.eql(\"Backend quản lý sinh viên đang hoạt động\");",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Danh sách sinh viên (T02)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/sinh-vien",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "sinh-vien"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status la 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test(\"Tra danh sach co SV001\", function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body.success).to.eql(true);",
+              "    pm.expect(body.data).to.be.an(\"array\");",
+              "    pm.expect(body.data.some(function (sv) {",
+              "        return sv.maSV === \"SV001\";",
+              "    })).to.eql(true);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Tìm SV001 (T03)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/sinh-vien/SV001",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "sinh-vien", "SV001"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status la 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test(\"Tim dung SV001\", function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body.success).to.eql(true);",
+              "    pm.expect(body.data.maSV).to.eql(\"SV001\");",
+              "    pm.expect(body.data.hoTen).to.eql(\"Minh Nhật\");",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Không có SV999 (T04)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/sinh-vien/SV999",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "sinh-vien", "SV999"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status la 404\", function () {",
+              "    pm.response.to.have.status(404);",
+              "});",
+              "pm.test(\"Bao khong tim thay sinh vien\", function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body.success).to.eql(false);",
+              "    pm.expect(body.message).to.eql(\"Không tìm thấy sinh viên\");",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - Thêm SV003 (T05)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"maSV\": \"SV003\",\n  \"hoTen\": \"Ngọc Mai\",\n  \"email\": \"ngocmai@example.com\",\n  \"maLop\": \"25CT114\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/sinh-vien",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "sinh-vien"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status la 201 Created\", function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "pm.test(\"Them thanh cong SV003\", function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body.success).to.eql(true);",
+              "    pm.expect(body.data.maSV).to.eql(\"SV003\");",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 - Từ chối trùng SV003 (T06)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"maSV\": \"SV003\",\n  \"hoTen\": \"Ngọc Mai\",\n  \"email\": \"ngocmai@example.com\",\n  \"maLop\": \"25CT114\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/sinh-vien",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "sinh-vien"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status la 409 Conflict\", function () {",
+              "    pm.response.to.have.status(409);",
+              "});",
+              "pm.test(\"Bao ma sinh vien da ton tai\", function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body.success).to.eql(false);",
+              "    pm.expect(body.message).to.eql(\"Mã sinh viên đã tồn tại\");",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 - Thiếu họ tên SV004 (T07)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"maSV\": \"SV004\",\n  \"email\": \"thunghiem@example.com\",\n  \"maLop\": \"25CT114\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/sinh-vien",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "sinh-vien"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status la 400 Bad Request\", function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "pm.test(\"Bao loi thieu du lieu hoTen\", function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body.success).to.eql(false);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 - Email sai SV004 (T08)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"maSV\": \"SV004\",\n  \"hoTen\": \"Thử Nghiệm\",\n  \"email\": \"khong-phai-email\",\n  \"maLop\": \"25CT114\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/sinh-vien",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "sinh-vien"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status la 400 Bad Request\", function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "pm.test(\"Bao loi email khong dung dinh dang\", function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body.success).to.eql(false);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 - Mã kiểu number (T09)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"maSV\": 4,\n  \"hoTen\": \"Thử Nghiệm\",\n  \"email\": \"test@example.com\",\n  \"maLop\": \"25CT114\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/sinh-vien",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "sinh-vien"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status la 400 Bad Request\", function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "pm.test(\"Bao loi kieu maSV phai la chuoi\", function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body.success).to.eql(false);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10 - JSON hỏng (T10)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"maSV\":\"SV004\""
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/sinh-vien",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "sinh-vien"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status la 400 Bad Request\", function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "pm.test(\"Bao loi cu phap JSON\", function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body.success).to.eql(false);",
+              "    pm.expect(body.message).to.eql(\"Dữ liệu JSON gửi lên không đúng cú pháp\");",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "11 - Đường dẫn không tồn tại (T11)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/khong-co",
+          "host": ["{{baseUrl}}"],
+          "path": ["khong-co"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status la 404 Not Found\", function () {",
+              "    pm.response.to.have.status(404);",
+              "});",
+              "pm.test(\"Bao loi khong tim thay duong dan\", function () {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body.success).to.eql(false);",
+              "    pm.expect(body.message).to.eql(\"Không tìm thấy đường dẫn\");",
+              "});"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
