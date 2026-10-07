@@ -1,0 +1,18 @@
+$kind: http-request
+name: 06 - Đọc lại SV003 sau khi thêm (Kiểm tra lưu bền vững)
+url: "{{baseUrl}}/api/v1/sinh-vien/SV003"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("SV003 van duoc luu", function () {
+          pm.response.to.have.status(200);
+          const b = pm.response.json();
+          pm.expect(b.success).to.eql(true);
+          pm.expect(b.data.maSV).to.eql("SV003");
+          pm.expect(b.data.hoTen).to.eql("Ngọc Mai");
+          pm.expect(b.data.email).to.eql("ngocmai@example.com");
+          pm.expect(b.data.maLop).to.eql("25CT114");
+      });
+    language: text/javascript
+order: 6000

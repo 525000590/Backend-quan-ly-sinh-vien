@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/sinh-vien"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: '{"maSV":"SV004"'
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status la 400 Bad Request", function () {
+          pm.response.to.have.status(400);
+      });
+      pm.test("Bao loi cu phap JSON", function () {
+          const body = pm.response.json();
+          pm.expect(body.success).to.eql(false);
+          pm.expect(body.message).to.eql("Dữ liệu JSON gửi lên không đúng cú pháp");
+      });
+    language: text/javascript
+order: 11000

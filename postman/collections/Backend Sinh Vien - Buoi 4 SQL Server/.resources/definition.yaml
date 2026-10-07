@@ -1,0 +1,4 @@
+$kind: collection
+description: Postman Collection kiểm thử API Backend Quản lý sinh viên (SQL Server + Sequelize ORM) theo bài thực hành Buổi 4.
+variables:
+  baseUrl: http://localhost:5000

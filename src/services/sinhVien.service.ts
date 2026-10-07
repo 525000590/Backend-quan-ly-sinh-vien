@@ -1,40 +1,49 @@
+import { UniqueConstraintError, ForeignKeyConstraintError } from 'sequelize';
 import type { ISinhVienDTO } from '../dtos/sinhVien.dto.js';
+import { SinhVien } from '../models/SinhVien.js';
+import { Lop } from '../models/Lop.js';
 import { AppError } from '../utils/AppError.js';
 
-// Mảng lưu trữ danh sách sinh viên trong bộ nhớ (in-memory)
-const sinhVienList: ISinhVienDTO[] = [
-  {
-    maSV: 'SV001',
-    hoTen: 'Minh Nhật',
-    email: 'minhnhat@example.com',
-    maLop: '25CT114',
-  },
-  {
-    maSV: 'SV002',
-    hoTen: 'Lan Anh',
-    email: 'lananh@example.com',
-    maLop: '25CT114',
-  },
-];
-
 /**
- * Lấy toàn bộ danh sách sinh viên
+ * Lấy toàn bộ danh sách sinh viên từ CSDL SQL Server, sắp xếp theo maSV tăng dần
  */
-export function layDanhSachSinhVien(): ISinhVienDTO[] {
-  return [...sinhVienList];
+export async function layDanhSachSinhVien(): Promise<ISinhVienDTO[]> {
+  const danhSach = await SinhVien.findAll({
+    order: [['maSV', 'ASC']],
+  });
+
+  return danhSach.map((sv) => ({
+    maSV: sv.maSV,
+    hoTen: sv.hoTen,
+    email: sv.email,
+    maLop: sv.maLop,
+  }));
 }
 
 /**
- * Tìm sinh viên theo mã sinh viên
+ * Tìm sinh viên theo mã sinh viên (maSV)
+ * Trả về ISinhVienDTO nếu tìm thấy, hoặc undefined nếu không có
  */
-export function timSinhVienTheoMa(maSV: string): ISinhVienDTO | undefined {
-  return sinhVienList.find((sv) => sv.maSV === maSV);
+export async function timSinhVienTheoMa(
+  maSV: string
+): Promise<ISinhVienDTO | undefined> {
+  const sinhVien = await SinhVien.findByPk(maSV);
+  if (!sinhVien) {
+    return undefined;
+  }
+
+  return {
+    maSV: sinhVien.maSV,
+    hoTen: sinhVien.hoTen,
+    email: sinhVien.email,
+    maLop: sinhVien.maLop,
+  };
 }
 
 /**
- * Thêm sinh viên mới với các quy tắc kiểm tra (validation)
+ * Thêm sinh viên mới vào SQL Server với đầy đủ kiểm tra (validation) nghiệp vụ
  */
-export function themSinhVien(input: unknown): ISinhVienDTO {
+export async function themSinhVien(input: unknown): Promise<ISinhVienDTO> {
   // 1. Kiểm tra input phải là một object hợp lệ (không phải null, array hoặc kiểu nguyên thủy)
   if (typeof input !== 'object' || input === null || Array.isArray(input)) {
     throw new AppError(400, 'Dữ liệu gửi lên phải là một đối tượng JSON hợp lệ');
@@ -75,38 +84,65 @@ export function themSinhVien(input: unknown): ISinhVienDTO {
     throw new AppError(400, 'Họ tên và mã lớp không được để trống');
   }
 
-  // 6. Kiểm tra định dạng email cơ bản
+  // 6. Kiểm tra giới hạn độ dài ký tự theo thiết kế cột CSDL
+  if (hoTen.length > 150) {
+    throw new AppError(400, 'Họ tên không được vượt quá 150 ký tự');
+  }
+  if (email.length > 254) {
+    throw new AppError(400, 'Email không được vượt quá 254 ký tự');
+  }
+  if (maLop.length > 50) {
+    throw new AppError(400, 'Mã lớp không được vượt quá 50 ký tự');
+  }
+
+  // 7. Kiểm tra định dạng email cơ bản
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
     throw new AppError(400, 'Email không đúng định dạng');
   }
 
-  // 7. Kiểm tra trùng mã sinh viên
-  const daTonTai = sinhVienList.some((sv) => sv.maSV === maSV);
-  if (daTonTai) {
+  // 8. Kiểm tra maSV đã tồn tại chưa trong CSDL
+  const svDaTonTai = await SinhVien.findByPk(maSV);
+  if (svDaTonTai) {
     throw new AppError(409, 'Mã sinh viên đã tồn tại');
   }
 
-  // 8. Tạo đối tượng sinh viên mới chỉ lưu đúng 4 trường theo DTO (bỏ các trường thừa ngoài ý muốn)
-  const sinhVienMoi: ISinhVienDTO = {
-    maSV,
-    hoTen,
-    email,
-    maLop,
-  };
-
-  sinhVienList.push(sinhVienMoi);
-  return sinhVienMoi;
-}
-
-/**
- * Xóa sinh viên theo mã sinh viên (maSV)
- */
-export function xoaSinhVien(maSV: string): boolean {
-  const index = sinhVienList.findIndex((sv) => sv.maSV === maSV);
-  if (index === -1) {
-    return false;
+  // 9. Kiểm tra mã lớp tồn tại nếu bảng Lop đã được cấu hình (phần mở rộng)
+  try {
+    const lopTonTai = await Lop.findByPk(maLop);
+    if (!lopTonTai) {
+      // Nếu có bảng Lop và không tìm thấy maLop tương ứng
+      throw new AppError(400, 'Mã lớp không tồn tại');
+    }
+  } catch (err) {
+    if (err instanceof AppError) {
+      throw err;
+    }
+    // Nếu bảng Lop chưa được tạo trên DB thì bỏ qua kiểm tra này để bài chính hoạt động
   }
-  sinhVienList.splice(index, 1);
-  return true;
+
+  // 10. Lưu sinh viên vào CSDL SQL Server
+  try {
+    const sinhVienMoi = await SinhVien.create({
+      maSV,
+      hoTen,
+      email,
+      maLop,
+    });
+
+    return {
+      maSV: sinhVienMoi.maSV,
+      hoTen: sinhVienMoi.hoTen,
+      email: sinhVienMoi.email,
+      maLop: sinhVienMoi.maLop,
+    };
+  } catch (error) {
+    if (error instanceof UniqueConstraintError) {
+      throw new AppError(409, 'Mã sinh viên đã tồn tại');
+    }
+    if (error instanceof ForeignKeyConstraintError) {
+      throw new AppError(400, 'Mã lớp không tồn tại');
+    }
+    throw error;
+  }
 }

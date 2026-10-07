@@ -1,0 +1,28 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/sinh-vien"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "maSV": "SV003",
+      "hoTen": "Ngọc Mai",
+      "email": "ngocmai@example.com",
+      "maLop": "25CT114"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status la 201 Created", function () {
+          pm.response.to.have.status(201);
+      });
+      pm.test("Them thanh cong SV003", function () {
+          const body = pm.response.json();
+          pm.expect(body.success).to.eql(true);
+          pm.expect(body.data.maSV).to.eql("SV003");
+          pm.expect(body.data.hoTen).to.eql("Ngọc Mai");
+      });
+    language: text/javascript
+order: 5000

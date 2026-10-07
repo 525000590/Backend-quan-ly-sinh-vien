@@ -6,13 +6,17 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "check:db": "tsx src/scripts/check-db.ts",
+    "check:lop": "tsx src/scripts/check-lop-relation.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^5.1.0",
-    "helmet": "^8.1.0"
+    "helmet": "^8.1.0",
+    "sequelize": "^6.37.8",
+    "tedious": "^20.3.3"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

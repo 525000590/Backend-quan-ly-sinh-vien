@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/sinh-vien"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status la 200", function () {
+          pm.response.to.have.status(200);
+      });
+      pm.test("Danh sach dung hop dong", function () {
+          const body = pm.response.json();
+          pm.expect(body.success).to.eql(true);
+          pm.expect(body.data).to.be.an("array");
+          pm.expect(body.data.some(function (sv) { return sv.maSV === "SV001"; })).to.eql(true);
+      });
+    language: text/javascript
+order: 2000

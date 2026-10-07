@@ -1,4 +1,0 @@
-$kind: collection
-description: Postman Collection kiểm thử API Backend Quản lý sinh viên (Node.js + Express 5 + TypeScript) theo bài thực hành Chương 2.
-variables:
-  baseUrl: http://localhost:5000

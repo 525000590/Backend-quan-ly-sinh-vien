@@ -1,0 +1,27 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/sinh-vien"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "maSV": "SV003",
+      "hoTen": "Ngọc Mai",
+      "email": "ngocmai@example.com",
+      "maLop": "25CT114"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status la 409 Conflict", function () {
+          pm.response.to.have.status(409);
+      });
+      pm.test("Bao ma sinh vien da ton tai", function () {
+          const body = pm.response.json();
+          pm.expect(body.success).to.eql(false);
+          pm.expect(body.message).to.eql("Mã sinh viên đã tồn tại");
+      });
+    language: text/javascript
+order: 7000

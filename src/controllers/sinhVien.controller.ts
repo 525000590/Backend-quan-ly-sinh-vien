@@ -3,19 +3,18 @@ import {
   layDanhSachSinhVien,
   timSinhVienTheoMa,
   themSinhVien,
-  xoaSinhVien,
 } from '../services/sinhVien.service.js';
 
 /**
- * Controller: Lấy danh sách toàn bộ sinh viên
+ * Controller: Lấy danh sách toàn bộ sinh viên từ Database
  */
-export function getDanhSachSinhVien(
+export async function getDanhSachSinhVien(
   req: Request,
   res: Response,
   next: NextFunction
-): void {
+): Promise<void> {
   try {
-    const data = layDanhSachSinhVien();
+    const data = await layDanhSachSinhVien();
     res.status(200).json({
       success: true,
       message: 'Lấy danh sách sinh viên thành công',
@@ -27,18 +26,18 @@ export function getDanhSachSinhVien(
 }
 
 /**
- * Controller: Tìm kiếm sinh viên theo mã (maSV)
+ * Controller: Tìm kiếm sinh viên theo mã sinh viên (maSV)
  */
-export function getSinhVienTheoMa(
+export async function getSinhVienTheoMa(
   req: Request,
   res: Response,
   next: NextFunction
-): void {
+): Promise<void> {
   try {
     const maSV = String(req.params.maSV);
-    const sinhVien = timSinhVienTheoMa(maSV);
+    const data = await timSinhVienTheoMa(maSV);
 
-    if (!sinhVien) {
+    if (!data) {
       res.status(404).json({
         success: false,
         message: 'Không tìm thấy sinh viên',
@@ -49,7 +48,7 @@ export function getSinhVienTheoMa(
     res.status(200).json({
       success: true,
       message: 'Tìm sinh viên thành công',
-      data: sinhVien,
+      data,
     });
   } catch (error) {
     next(error);
@@ -57,48 +56,19 @@ export function getSinhVienTheoMa(
 }
 
 /**
- * Controller: Thêm mới một sinh viên
+ * Controller: Thêm mới một sinh viên vào Database
  */
-export function taoSinhVien(
+export async function taoSinhVien(
   req: Request,
   res: Response,
   next: NextFunction
-): void {
+): Promise<void> {
   try {
-    const sinhVienMoi = themSinhVien(req.body);
+    const data = await themSinhVien(req.body);
     res.status(201).json({
       success: true,
       message: 'Thêm sinh viên thành công',
-      data: sinhVienMoi,
-    });
-  } catch (error) {
-    next(error);
-  }
-}
-
-/**
- * Controller: Xóa sinh viên theo mã (maSV)
- */
-export function deleteSinhVien(
-  req: Request,
-  res: Response,
-  next: NextFunction
-): void {
-  try {
-    const maSV = String(req.params.maSV);
-    const daXoa = xoaSinhVien(maSV);
-
-    if (!daXoa) {
-      res.status(404).json({
-        success: false,
-        message: 'Không tìm thấy sinh viên để xóa',
-      });
-      return;
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'Xóa sinh viên thành công',
+      data,
     });
   } catch (error) {
     next(error);

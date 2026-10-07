@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import sinhVienRoutes from './routes/sinhVien.routes.js';
 import { loggerMiddleware } from './middlewares/logger.middleware.js';
 import { errorMiddleware } from './middlewares/error.middleware.js';
+import { sequelize } from './config/database.js';
 
 const app = express();
 const PORT = Number(process.env.PORT ?? 5000);
@@ -41,7 +42,27 @@ app.use((req, res) => {
 // 7. Middleware gom và xử lý lỗi tập trung (phải đặt ở cuối cùng)
 app.use(errorMiddleware);
 
-// Khởi động server lắng nghe trên cổng đã chỉ định
-app.listen(PORT, () => {
-  console.log(`Server đang lắng nghe tại http://localhost:${PORT}`);
-});
+// 8. Hàm khởi động server: Kết nối CSDL trước khi mở HTTP port
+async function start(): Promise<void> {
+  try {
+    // Xác thực kết nối tới SQL Server
+    await sequelize.authenticate();
+    console.log('Kết nối CSDL SQL Server thành công!');
+
+    // Khởi động server lắng nghe trên cổng đã chỉ định
+    app.listen(PORT, () => {
+      console.log(`Server đang lắng nghe tại http://localhost:${PORT}`);
+    });
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error('[Khởi động thất bại] Không thể kết nối CSDL:', errorMsg);
+    try {
+      await sequelize.close();
+    } catch {
+      // bỏ qua lỗi đóng kết nối nếu có
+    }
+    process.exit(1);
+  }
+}
+
+start();

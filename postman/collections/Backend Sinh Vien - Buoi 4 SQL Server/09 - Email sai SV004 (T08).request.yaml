@@ -1,0 +1,26 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/sinh-vien"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "maSV": "SV004",
+      "hoTen": "Thử Nghiệm",
+      "email": "khong-phai-email",
+      "maLop": "25CT114"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status la 400 Bad Request", function () {
+          pm.response.to.have.status(400);
+      });
+      pm.test("Bao loi email khong dung dinh dang", function () {
+          const body = pm.response.json();
+          pm.expect(body.success).to.eql(false);
+      });
+    language: text/javascript
+order: 9000
