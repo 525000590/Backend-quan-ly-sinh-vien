@@ -1,16 +1,15 @@
 $kind: http-request
-url: "{{baseUrl}}/khong-co"
-method: GET
+url: "{{baseUrl}}/api/v1/sinh-vien/SV003"
+method: DELETE
 scripts:
   - type: afterResponse
     code: |-
-      pm.test("Status la 404 Not Found", function () {
+      pm.test("T12 - Status là 404 Not Found", function () {
           pm.response.to.have.status(404);
       });
-      pm.test("Bao loi khong tim thay duong dan", function () {
+      pm.test("T12 - Báo không tìm thấy sinh viên", function () {
           const body = pm.response.json();
           pm.expect(body.success).to.eql(false);
-          pm.expect(body.message).to.eql("Không tìm thấy đường dẫn");
       });
     language: text/javascript
 order: 12000

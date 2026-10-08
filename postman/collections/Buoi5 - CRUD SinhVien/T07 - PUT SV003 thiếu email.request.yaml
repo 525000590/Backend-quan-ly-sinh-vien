@@ -1,26 +1,24 @@
 $kind: http-request
-url: "{{baseUrl}}/api/v1/sinh-vien"
-method: POST
+url: "{{baseUrl}}/api/v1/sinh-vien/SV003"
+method: PUT
 headers:
   Content-Type: application/json
 body:
   type: text
   content: |-
     {
-      "maSV": "SV004",
-      "hoTen": "Thử Nghiệm",
-      "email": "khong-phai-email",
+      "hoTen": "Ngọc Mai Updated 2",
       "maLop": "25CT114"
     }
 scripts:
   - type: afterResponse
     code: |-
-      pm.test("Status la 400 Bad Request", function () {
+      pm.test("T07 - Status là 400 Bad Request", function () {
           pm.response.to.have.status(400);
       });
-      pm.test("Bao loi email khong dung dinh dang", function () {
+      pm.test("T07 - Báo lỗi thiếu email", function () {
           const body = pm.response.json();
           pm.expect(body.success).to.eql(false);
       });
     language: text/javascript
-order: 9000
+order: 7000

@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/sinh-vien/SV003"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("T05 - Status là 200 OK", function () {
+          pm.response.to.have.status(200);
+      });
+      pm.test("T05 - Đúng cả bốn trường dữ liệu", function () {
+          const body = pm.response.json();
+          pm.expect(body.success).to.eql(true);
+          pm.expect(body.data.maSV).to.eql("SV003");
+          pm.expect(body.data.hoTen).to.eql("Ngọc Mai");
+          pm.expect(body.data.email).to.eql("ngocmai@example.com");
+          pm.expect(body.data.maLop).to.eql("25CT114");
+      });
+    language: text/javascript
+order: 5000

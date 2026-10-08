@@ -1,23 +1,23 @@
 $kind: http-request
-url: "{{baseUrl}}/api/v1/sinh-vien"
-method: POST
+url: "{{baseUrl}}/api/v1/sinh-vien/SV9999"
+method: PUT
 headers:
   Content-Type: application/json
 body:
   type: text
   content: |-
     {
-      "maSV": "SV004",
-      "email": "thunghiem@example.com",
+      "hoTen": "Test Non Existent",
+      "email": "test@example.com",
       "maLop": "25CT114"
     }
 scripts:
   - type: afterResponse
     code: |-
-      pm.test("Status la 400 Bad Request", function () {
-          pm.response.to.have.status(400);
+      pm.test("T08 - Status là 404 Not Found", function () {
+          pm.response.to.have.status(404);
       });
-      pm.test("Bao loi thieu du lieu hoTen", function () {
+      pm.test("T08 - Báo không tìm thấy sinh viên", function () {
           const body = pm.response.json();
           pm.expect(body.success).to.eql(false);
       });

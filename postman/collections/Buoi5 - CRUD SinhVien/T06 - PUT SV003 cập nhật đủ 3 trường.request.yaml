@@ -1,0 +1,26 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/sinh-vien/SV003"
+method: PUT
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "hoTen": "Ngọc Mai Updated",
+      "email": "ngocmai@example.com",
+      "maLop": "25CT114"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("T06 - Status là 200 OK", function () {
+          pm.response.to.have.status(200);
+      });
+      pm.test("T06 - Cập nhật đúng giá trị mới", function () {
+          const body = pm.response.json();
+          pm.expect(body.success).to.eql(true);
+          pm.expect(body.data.hoTen).to.eql("Ngọc Mai Updated");
+      });
+    language: text/javascript
+order: 6000

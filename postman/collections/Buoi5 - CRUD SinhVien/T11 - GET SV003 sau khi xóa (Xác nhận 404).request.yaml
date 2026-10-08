@@ -1,16 +1,15 @@
 $kind: http-request
-url: "{{baseUrl}}/api/v1/sinh-vien/SV999"
+url: "{{baseUrl}}/api/v1/sinh-vien/SV003"
 method: GET
 scripts:
   - type: afterResponse
     code: |-
-      pm.test("Status la 404", function () {
+      pm.test("T11 - Status là 404 Not Found", function () {
           pm.response.to.have.status(404);
       });
-      pm.test("Bao khong tim thay sinh vien", function () {
+      pm.test("T11 - Sinh viên không còn tồn tại", function () {
           const body = pm.response.json();
           pm.expect(body.success).to.eql(false);
-          pm.expect(body.message).to.eql("Không tìm thấy sinh viên");
       });
     language: text/javascript
-order: 4000
+order: 11000

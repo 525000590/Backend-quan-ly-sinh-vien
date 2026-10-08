@@ -1,0 +1,4 @@
+$kind: collection
+description: Postman Collection kiểm thử 12 test case bắt buộc của RESTful CRUD & Swagger - Buổi 5.
+variables:
+  baseUrl: http://localhost:5000

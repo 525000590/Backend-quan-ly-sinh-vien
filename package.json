@@ -8,7 +8,8 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "check:db": "tsx src/scripts/check-db.ts",
-    "check:lop": "tsx src/scripts/check-lop-relation.ts"
+    "check:lop": "tsx src/scripts/check-lop-relation.ts",
+    "test:crud": "tsx src/scripts/test-crud.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",

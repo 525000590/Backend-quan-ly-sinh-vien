@@ -5,17 +5,21 @@ headers:
   Content-Type: application/json
 body:
   type: text
-  content: '{"maSV":"SV004"'
+  content: |-
+    {
+      "maSV": "SV004",
+      "email": "thunghiem@example.com",
+      "maLop": "25CT114"
+    }
 scripts:
   - type: afterResponse
     code: |-
-      pm.test("Status la 400 Bad Request", function () {
+      pm.test("T04 - Status là 400 Bad Request", function () {
           pm.response.to.have.status(400);
       });
-      pm.test("Bao loi cu phap JSON", function () {
+      pm.test("T04 - Báo lỗi thiếu trường dữ liệu", function () {
           const body = pm.response.json();
           pm.expect(body.success).to.eql(false);
-          pm.expect(body.message).to.eql("Dữ liệu JSON gửi lên không đúng cú pháp");
       });
     language: text/javascript
-order: 11000
+order: 4000

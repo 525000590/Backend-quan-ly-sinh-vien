@@ -15,13 +15,14 @@ body:
 scripts:
   - type: afterResponse
     code: |-
-      pm.test("Status la 409 Conflict", function () {
-          pm.response.to.have.status(409);
+      pm.test("T02 - Status là 201 Created", function () {
+          pm.response.to.have.status(201);
       });
-      pm.test("Bao ma sinh vien da ton tai", function () {
+      pm.test("T02 - Sinh viên mới đúng dữ liệu", function () {
           const body = pm.response.json();
-          pm.expect(body.success).to.eql(false);
-          pm.expect(body.message).to.eql("Mã sinh viên đã tồn tại");
+          pm.expect(body.success).to.eql(true);
+          pm.expect(body.data.maSV).to.eql("SV003");
+          pm.expect(body.data.hoTen).to.eql("Ngọc Mai");
       });
     language: text/javascript
-order: 7000
+order: 2000
