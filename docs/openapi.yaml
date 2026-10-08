@@ -1,0 +1,190 @@
+openapi: 3.0.3
+info:
+  title: API Quản lý sinh viên
+  version: 1.0.0
+  description: RESTful CRUD SinhVien - thực hành Buổi 5.
+servers:
+  - url: /
+    description: Cùng host và port với Express
+tags:
+  - name: SinhVien
+    description: Quản lý sinh viên
+paths:
+  /api/v1/sinh-vien:
+    get:
+      tags: [SinhVien]
+      summary: Lấy danh sách sinh viên
+      operationId: getDanhSachSinhVien
+      responses:
+        '200':
+          description: Thành công, có thể trả danh sách rỗng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SinhVienListResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags: [SinhVien]
+      summary: Thêm sinh viên mới
+      operationId: taoSinhVien
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SinhVien'
+      responses:
+        '201':
+          description: Tạo sinh viên thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SinhVienResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/v1/sinh-vien/{maSV}:
+    parameters:
+      - $ref: '#/components/parameters/MaSV'
+    get:
+      tags: [SinhVien]
+      summary: Lấy sinh viên theo mã
+      operationId: getSinhVienTheoMa
+      responses:
+        '200':
+          description: Tìm thấy sinh viên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SinhVienResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      tags: [SinhVien]
+      summary: Cập nhật thông tin sinh viên
+      operationId: capNhatSinhVien
+      description: Gửi đủ hoTen, email, maLop; maSV lấy từ URL.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SinhVienUpdate'
+      responses:
+        '200':
+          description: Cập nhật thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SinhVienResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags: [SinhVien]
+      summary: Xóa sinh viên theo mã
+      operationId: xoaSinhVien
+      responses:
+        '200':
+          description: Xóa thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+components:
+  parameters:
+    MaSV:
+      name: maSV
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        example: SV003
+  schemas:
+    SinhVien:
+      type: object
+      additionalProperties: false
+      required: [maSV, hoTen, email, maLop]
+      properties:
+        maSV: {type: string, minLength: 1, example: SV003}
+        hoTen: {type: string, minLength: 1, example: Ngọc Mai}
+        email: {type: string, format: email, example: ngocmai@example.com}
+        maLop: {type: string, minLength: 1, example: 25CT114}
+    SinhVienUpdate:
+      type: object
+      additionalProperties: false
+      required: [hoTen, email, maLop]
+      properties:
+        hoTen: {type: string, minLength: 1, example: Ngọc Mai Updated}
+        email: {type: string, format: email, example: ngocmai@example.com}
+        maLop: {type: string, minLength: 1, example: 25CT114}
+    SinhVienResponse:
+      type: object
+      required: [success, message, data]
+      properties:
+        success: {type: boolean, enum: [true], example: true}
+        message: {type: string, example: Thao tác thành công}
+        data:
+          $ref: '#/components/schemas/SinhVien'
+    SinhVienListResponse:
+      type: object
+      required: [success, message, data]
+      properties:
+        success: {type: boolean, enum: [true], example: true}
+        message: {type: string, example: Lấy danh sách thành công}
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/SinhVien'
+    DeleteResponse:
+      type: object
+      required: [success, message]
+      properties:
+        success: {type: boolean, enum: [true], example: true}
+        message: {type: string, example: Xóa sinh viên thành công}
+    ErrorResponse:
+      type: object
+      required: [success, message, data]
+      properties:
+        success: {type: boolean, enum: [false], example: false}
+        message: {type: string, example: Yêu cầu không thực hiện được}
+        data: {type: object, nullable: true, example: null}
+  responses:
+    BadRequest:
+      description: Dữ liệu đầu vào không hợp lệ
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Không tìm thấy sinh viên
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Conflict:
+      description: Mã sinh viên đã tồn tại
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    InternalError:
+      description: Lỗi ngoài dự kiến trên server
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'

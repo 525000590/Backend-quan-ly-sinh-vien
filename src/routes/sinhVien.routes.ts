@@ -3,6 +3,8 @@ import {
   getDanhSachSinhVien,
   getSinhVienTheoMa,
   taoSinhVien,
+  capNhatSinhVien,
+  xoaSinhVien,
 } from '../controllers/sinhVien.controller.js';
 
 const router = Router();
@@ -15,5 +17,11 @@ router.get('/:maSV', getSinhVienTheoMa);
 
 // POST /api/v1/sinh-vien -> Thêm sinh viên mới
 router.post('/', taoSinhVien);
+
+// PUT /api/v1/sinh-vien/:maSV -> Cập nhật thông tin sinh viên
+router.put('/:maSV', capNhatSinhVien);
+
+// DELETE /api/v1/sinh-vien/:maSV -> Xóa sinh viên
+router.delete('/:maSV', xoaSinhVien);
 
 export default router;

@@ -2,7 +2,7 @@ import type { ErrorRequestHandler } from 'express';
 import { AppError } from '../utils/AppError.js';
 
 /**
- * Error Middleware: Gom và chuẩn hóa toàn bộ phản hồi lỗi của hệ thống.
+ * Error Middleware: Gom và chuẩn hóa toàn bộ phản hồi lỗi của hệ thống theo đặc tả OpenAPI.
  * Express nhận diện middleware xử lý lỗi khi có đủ đúng 4 tham số: (err, req, res, next).
  */
 export const errorMiddleware: ErrorRequestHandler = (err, req, res, next) => {
@@ -11,6 +11,7 @@ export const errorMiddleware: ErrorRequestHandler = (err, req, res, next) => {
     res.status(err.statusCode).json({
       success: false,
       message: err.message,
+      data: null,
     });
     return;
   }
@@ -20,6 +21,7 @@ export const errorMiddleware: ErrorRequestHandler = (err, req, res, next) => {
     res.status(400).json({
       success: false,
       message: 'Dữ liệu JSON gửi lên không đúng cú pháp',
+      data: null,
     });
     return;
   }
@@ -28,6 +30,7 @@ export const errorMiddleware: ErrorRequestHandler = (err, req, res, next) => {
   console.error('[SERVER ERROR]', err);
   res.status(500).json({
     success: false,
-    message: 'Lỗi hệ thống',
+    message: 'Lỗi ngoài dự kiến trên server',
+    data: null,
   });
 };
