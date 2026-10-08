@@ -19,6 +19,7 @@ BEGIN
 END
 GO
 
--- 3. Chỉ cấp quyền SELECT và INSERT trên bảng dbo.SinhVien cho sv_app (nguyên tắc đặc quyền tối thiểu)
-GRANT SELECT, INSERT ON dbo.SinhVien TO sv_app;
+-- 3. Cấp quyền SELECT, INSERT, UPDATE, DELETE trên các bảng cho sv_app
+GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.SinhVien TO sv_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.Lop TO sv_app;
 GO
