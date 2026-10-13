@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: API Quản lý sinh viên
   version: 1.0.0
-  description: RESTful CRUD SinhVien - thực hành Buổi 5.
+  description: RESTful CRUD SinhVien - thực hành Buổi 06 (Middleware & Validation).
 servers:
   - url: /
     description: Cùng host và port với Express
@@ -115,6 +115,12 @@ components:
         minLength: 1
         example: SV003
   schemas:
+    ValidationIssue:
+      type: object
+      required: [field, message]
+      properties:
+        field: { type: string, example: email }
+        message: { type: string, example: Email không hợp lệ }
     SinhVien:
       type: object
       additionalProperties: false
@@ -163,6 +169,11 @@ components:
         success: {type: boolean, enum: [false], example: false}
         message: {type: string, example: Yêu cầu không thực hiện được}
         data: {type: object, nullable: true, example: null}
+        errors:
+          type: array
+          description: Chi tiết lỗi Validation (nếu có)
+          items:
+            $ref: '#/components/schemas/ValidationIssue'
   responses:
     BadRequest:
       description: Dữ liệu đầu vào không hợp lệ

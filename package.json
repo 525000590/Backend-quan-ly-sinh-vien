@@ -9,7 +9,8 @@
     "start": "node dist/server.js",
     "check:db": "tsx src/scripts/check-db.ts",
     "check:lop": "tsx src/scripts/check-lop-relation.ts",
-    "test:crud": "tsx src/scripts/test-crud.ts"
+    "test:crud": "tsx src/scripts/test-crud.ts",
+    "test:validation": "tsx src/scripts/run-all-tests.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",
@@ -17,14 +18,17 @@
     "express": "^5.1.0",
     "helmet": "^8.1.0",
     "js-yaml": "^5.4.3",
+    "morgan": "^1.12.1",
     "sequelize": "^6.37.8",
     "swagger-ui-express": "^5.0.1",
-    "tedious": "^20.3.3"
+    "tedious": "^20.3.3",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.1",
     "@types/js-yaml": "^4.0.9",
+    "@types/morgan": "^1.9.10",
     "@types/node": "^22.14.0",
     "@types/swagger-ui-express": "^4.1.8",
     "openapi-types": "^12.1.3",
