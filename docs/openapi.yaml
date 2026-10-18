@@ -2,18 +2,86 @@ openapi: 3.0.3
 info:
   title: API Quản lý sinh viên
   version: 1.0.0
-  description: RESTful CRUD SinhVien - thực hành Buổi 06 (Middleware & Validation).
+  description: RESTful CRUD SinhVien & Authentication - thực hành Buổi 07 (JWT & Phân quyền).
 servers:
   - url: /
     description: Cùng host và port với Express
 tags:
+  - name: Auth
+    description: Xác thực & Quản lý tài khoản người dùng
   - name: SinhVien
     description: Quản lý sinh viên
 paths:
+  /api/auth/register:
+    post:
+      tags: [Auth]
+      summary: Đăng ký tài khoản người dùng mới
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Đăng ký tài khoản thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Đăng nhập nhận JWT Access Token
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Đăng nhập thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/auth/profile:
+    get:
+      tags: [Auth]
+      summary: Xem thông tin hồ sơ cá nhân
+      operationId: getProfile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lấy thông tin hồ sơ thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /api/v1/sinh-vien:
     get:
       tags: [SinhVien]
-      summary: Lấy danh sách sinh viên
+      summary: Lấy danh sách sinh viên (Public)
       operationId: getDanhSachSinhVien
       responses:
         '200':
@@ -26,8 +94,10 @@ paths:
           $ref: '#/components/responses/InternalError'
     post:
       tags: [SinhVien]
-      summary: Thêm sinh viên mới
+      summary: Thêm sinh viên mới (Yêu cầu Admin)
       operationId: taoSinhVien
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -43,6 +113,10 @@ paths:
                 $ref: '#/components/schemas/SinhVienResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '409':
           $ref: '#/components/responses/Conflict'
         '500':
@@ -52,7 +126,7 @@ paths:
       - $ref: '#/components/parameters/MaSV'
     get:
       tags: [SinhVien]
-      summary: Lấy sinh viên theo mã
+      summary: Lấy sinh viên theo mã (Public)
       operationId: getSinhVienTheoMa
       responses:
         '200':
@@ -67,9 +141,11 @@ paths:
           $ref: '#/components/responses/InternalError'
     put:
       tags: [SinhVien]
-      summary: Cập nhật thông tin sinh viên
+      summary: Cập nhật thông tin sinh viên (Yêu cầu Admin)
       operationId: capNhatSinhVien
       description: Gửi đủ hoTen, email, maLop; maSV lấy từ URL.
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -85,14 +161,20 @@ paths:
                 $ref: '#/components/schemas/SinhVienResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
     delete:
       tags: [SinhVien]
-      summary: Xóa sinh viên theo mã
+      summary: Xóa sinh viên theo mã (Yêu cầu Admin)
       operationId: xoaSinhVien
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Xóa thành công
@@ -100,11 +182,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DeleteResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   parameters:
     MaSV:
       name: maSV
@@ -115,6 +206,50 @@ components:
         minLength: 1
         example: SV003
   schemas:
+    RegisterRequest:
+      type: object
+      additionalProperties: false
+      required: [fullName, email, password]
+      properties:
+        fullName: { type: string, example: Nguyen Minh An }
+        email: { type: string, format: email, example: an.lab@example.com }
+        password: { type: string, format: password, example: SinhVien@123 }
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email: { type: string, format: email, example: an.lab@example.com }
+        password: { type: string, format: password, example: SinhVien@123 }
+    User:
+      type: object
+      required: [id, fullName, email, role]
+      properties:
+        id: { type: integer, example: 1 }
+        fullName: { type: string, example: Nguyen Minh An }
+        email: { type: string, format: email, example: an.lab@example.com }
+        role: { type: string, example: student }
+    UserResponse:
+      type: object
+      required: [success, message, data]
+      properties:
+        success: { type: boolean, enum: [true], example: true }
+        message: { type: string, example: Thao tác thành công }
+        data:
+          $ref: '#/components/schemas/User'
+    LoginResponse:
+      type: object
+      required: [success, message, data]
+      properties:
+        success: { type: boolean, enum: [true], example: true }
+        message: { type: string, example: Login success }
+        data:
+          type: object
+          required: [accessToken, tokenType, expiresIn]
+          properties:
+            accessToken: { type: string, example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... }
+            tokenType: { type: string, example: Bearer }
+            expiresIn: { type: integer, example: 3600 }
     ValidationIssue:
       type: object
       required: [field, message]
@@ -181,14 +316,26 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Chưa xác thực hoặc token không hợp lệ
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Quyền truy cập bị từ chối - Yêu cầu vai trò Admin
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
     NotFound:
-      description: Không tìm thấy sinh viên
+      description: Không tìm thấy tài nguyên
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
     Conflict:
-      description: Mã sinh viên đã tồn tại
+      description: Dữ liệu đã tồn tại (xung đột)
       content:
         application/json:
           schema:

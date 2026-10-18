@@ -10,14 +10,18 @@
     "check:db": "tsx src/scripts/check-db.ts",
     "check:lop": "tsx src/scripts/check-lop-relation.ts",
     "test:crud": "tsx src/scripts/test-crud.ts",
-    "test:validation": "tsx src/scripts/run-all-tests.ts"
+    "test:validation": "tsx src/scripts/run-all-tests.ts",
+    "seed:admin": "tsx src/scripts/seed-admin.ts",
+    "test:auth": "tsx src/scripts/test-buoi7-auth.ts"
   },
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^5.1.0",
     "helmet": "^8.1.0",
     "js-yaml": "^5.4.3",
+    "jsonwebtoken": "^9.0.3",
     "morgan": "^1.12.1",
     "sequelize": "^6.37.8",
     "swagger-ui-express": "^5.0.1",
@@ -25,9 +29,11 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.1",
     "@types/js-yaml": "^4.0.9",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/morgan": "^1.9.10",
     "@types/node": "^22.14.0",
     "@types/swagger-ui-express": "^4.1.8",

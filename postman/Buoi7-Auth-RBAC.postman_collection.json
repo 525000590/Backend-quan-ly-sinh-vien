@@ -1,0 +1,527 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "Buoi7 - Authentication & Authorization (RBAC)",
+    "description": "Postman Collection kiểm thử 24 test case Buổi 07: Auth, JWT, isAuth, isAdmin và CRUD SinhVien được bảo vệ.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "studentToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "testMaSV",
+      "value": "SV098",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "A01 - Register student hợp lệ",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fullName\": \"Nguyen Minh An\",\n  \"email\": \"an.lab@example.com\",\n  \"password\": \"SinhVien@123\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register"] }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "pm.test('A01 - Status là 201', function () { pm.response.to.have.status(201); });",
+            "pm.test('A01 - User có role student, không lộ hash', function () {",
+            "    const b = pm.response.json();",
+            "    pm.expect(b.success).to.eql(true);",
+            "    pm.expect(b.data.role).to.eql('student');",
+            "    pm.expect(b.data.passwordHash).to.be.undefined;",
+            "});"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "A02 - Register trùng email A01",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fullName\": \"Nguyen Minh An\",\n  \"email\": \"an.lab@example.com\",\n  \"password\": \"SinhVien@123\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register"] }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "pm.test('A02 - Status là 409 Conflict', function () { pm.response.to.have.status(409); });"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "A03 - Register body thêm role=admin",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fullName\": \"Hacker\",\n  \"email\": \"hacker@example.com\",\n  \"password\": \"Hacker@123\",\n  \"role\": \"admin\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register"] }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "pm.test('A03 - Status là 400 từ chối trường lạ', function () { pm.response.to.have.status(400); });"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "A04 - Register thiếu password hoặc email sai",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fullName\": \"Thiếu Mật Khẩu\",\n  \"email\": \"khong-phai-email\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register"] }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "pm.test('A04 - Status là 400 Bad Request', function () { pm.response.to.have.status(400); });"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "A05 - Login student thành công",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"an.lab@example.com\",\n  \"password\": \"SinhVien@123\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "pm.test('A05 - Status là 200 OK', function () { pm.response.to.have.status(200); });",
+            "const b = pm.response.json();",
+            "pm.collectionVariables.set('studentToken', b.data.accessToken);",
+            "pm.test('A05 - Nhận accessToken hợp lệ', function () { pm.expect(b.data.accessToken).to.be.a('string'); });"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "A06 - Login sai password",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"an.lab@example.com\",\n  \"password\": \"SaiPass@123\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "pm.test('A06 - Status là 401 Unauthorized', function () { pm.response.to.have.status(401); });"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "A07 - Login email không tồn tại",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"khongtontai@example.com\",\n  \"password\": \"AnyPass@123\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "pm.test('A07 - Status là 401 không lộ thông tin', function () { pm.response.to.have.status(401); });"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "A08 - Profile không có token",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/auth/profile", "host": ["{{baseUrl}}"], "path": ["api", "auth", "profile"] }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "pm.test('A08 - Status là 401', function () { pm.response.to.have.status(401); });"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "A09 - Profile với token sai chữ ký",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer saiChukyToken123456" }],
+        "url": { "raw": "{{baseUrl}}/api/auth/profile", "host": ["{{baseUrl}}"], "path": ["api", "auth", "profile"] }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "pm.test('A09 - Status là 401', function () { pm.response.to.have.status(401); });"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "A10 - Profile với JWT student hợp lệ",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }],
+        "url": { "raw": "{{baseUrl}}/api/auth/profile", "host": ["{{baseUrl}}"], "path": ["api", "auth", "profile"] }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "pm.test('A10 - Status là 200 OK', function () { pm.response.to.have.status(200); });",
+            "const b = pm.response.json();",
+            "pm.test('A10 - Trả thông tin hồ sơ student', function () { pm.expect(b.data.email).to.eql('an.lab@example.com'); });"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "Login Admin lấy adminToken",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"Admin@123\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "pm.test('Admin Login thành công', function () { pm.response.to.have.status(200); });",
+            "const b = pm.response.json();",
+            "pm.collectionVariables.set('adminToken', b.data.accessToken);"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "B01 - GET danh sách SinhVien không cần token",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/v1/sinh-vien", "host": ["{{baseUrl}}"], "path": ["api", "v1", "sinh-vien"] }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "pm.test('B01 - Status là 200 (Public)', function () { pm.response.to.have.status(200); });"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "B02 - POST SinhVien không có token",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"maSV\": \"{{testMaSV}}\",\n  \"hoTen\": \"No Auth\",\n  \"email\": \"noauth@example.com\",\n  \"maLop\": \"25CT114\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/v1/sinh-vien", "host": ["{{baseUrl}}"], "path": ["api", "v1", "sinh-vien"] }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "pm.test('B02 - Status là 401 Unauthorized', function () { pm.response.to.have.status(401); });"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "B03 - PUT SinhVien token không hợp lệ",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer saiToken" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"hoTen\": \"Update No Auth\",\n  \"email\": \"noauth@example.com\",\n  \"maLop\": \"25CT114\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/v1/sinh-vien/{{testMaSV}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "sinh-vien", "{{testMaSV}}"] }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "pm.test('B03 - Status là 401 Unauthorized', function () { pm.response.to.have.status(401); });"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "B04 - DELETE SinhVien với studentToken",
+      "request": {
+        "method": "DELETE",
+        "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }],
+        "url": { "raw": "{{baseUrl}}/api/v1/sinh-vien/SV001", "host": ["{{baseUrl}}"], "path": ["api", "v1", "sinh-vien", "SV001"] }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "pm.test('B04 - Status là 403 Forbidden', function () { pm.response.to.have.status(403); });"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "B05 - POST SinhVien với studentToken",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{studentToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"maSV\": \"{{testMaSV}}\",\n  \"hoTen\": \"Student Try Post\",\n  \"email\": \"trypost@example.com\",\n  \"maLop\": \"25CT114\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/v1/sinh-vien", "host": ["{{baseUrl}}"], "path": ["api", "v1", "sinh-vien"] }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "pm.test('B05 - Status là 403 Forbidden', function () { pm.response.to.have.status(403); });"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "B06 - PUT SinhVien với studentToken",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{studentToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"hoTen\": \"Student Try Put\",\n  \"email\": \"tryput@example.com\",\n  \"maLop\": \"25CT114\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/v1/sinh-vien/SV001", "host": ["{{baseUrl}}"], "path": ["api", "v1", "sinh-vien", "SV001"] }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "pm.test('B06 - Status là 403 Forbidden', function () { pm.response.to.have.status(403); });"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "B07 - POST SinhVien hợp lệ với adminToken",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"maSV\": \"{{testMaSV}}\",\n  \"hoTen\": \"Nguyễn Văn Admin Test\",\n  \"email\": \"admintest@example.com\",\n  \"maLop\": \"25CT114\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/v1/sinh-vien", "host": ["{{baseUrl}}"], "path": ["api", "v1", "sinh-vien"] }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "pm.test('B07 - Status là 201 Created', function () { pm.response.to.have.status(201); });",
+            "const b = pm.response.json();",
+            "pm.test('B07 - Đúng maSV', function () { pm.expect(b.data.maSV).to.eql('SV098'); });"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "B08 - PUT SinhVien hợp lệ với adminToken",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"hoTen\": \"Nguyễn Văn Admin Updated\",\n  \"email\": \"admin.updated@example.com\",\n  \"maLop\": \"25CT114\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/v1/sinh-vien/{{testMaSV}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "sinh-vien", "{{testMaSV}}"] }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "pm.test('B08 - Status là 200 OK', function () { pm.response.to.have.status(200); });",
+            "const b = pm.response.json();",
+            "pm.test('B08 - Đúng hoTen mới', function () { pm.expect(b.data.hoTen).to.eql('Nguyễn Văn Admin Updated'); });"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "B09 - DELETE SinhVien với adminToken",
+      "request": {
+        "method": "DELETE",
+        "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+        "url": { "raw": "{{baseUrl}}/api/v1/sinh-vien/{{testMaSV}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "sinh-vien", "{{testMaSV}}"] }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "pm.test('B09 - Status là 200 OK', function () { pm.response.to.have.status(200); });"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "B10 - Admin POST body sai Zod",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"maSV\": \"SV099\",\n  \"email\": \"khong-phai-email\",\n  \"maLop\": \"25CT114\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/v1/sinh-vien", "host": ["{{baseUrl}}"], "path": ["api", "v1", "sinh-vien"] }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "pm.test('B10 - Status là 400 Bad Request', function () { pm.response.to.have.status(400); });",
+            "const b = pm.response.json();",
+            "pm.test('B10 - Có errors', function () { pm.expect(b.errors).to.be.an('array'); });"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "B11 - Admin POST mã bị trùng",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"maSV\": \"SV001\",\n  \"hoTen\": \"Trùng Mã\",\n  \"email\": \"trung@example.com\",\n  \"maLop\": \"25CT114\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/v1/sinh-vien", "host": ["{{baseUrl}}"], "path": ["api", "v1", "sinh-vien"] }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "pm.test('B11 - Status là 409 Conflict', function () { pm.response.to.have.status(409); });"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "B12 - Admin DELETE mã không tồn tại",
+      "request": {
+        "method": "DELETE",
+        "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+        "url": { "raw": "{{baseUrl}}/api/v1/sinh-vien/SV098", "host": ["{{baseUrl}}"], "path": ["api", "v1", "sinh-vien", "SV098"] }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "pm.test('B12 - Status là 404 Not Found', function () { pm.response.to.have.status(404); });"
+          ]
+        }
+      }]
+    }
+  ]
+}

@@ -7,6 +7,8 @@ import {
   xoaSinhVien,
 } from '../controllers/sinhVien.controller.js';
 import { validate } from '../middlewares/validate.middleware.js';
+import { isAuth } from '../middlewares/isAuth.js';
+import { isAdmin } from '../middlewares/isAdmin.js';
 import {
   createSinhVienSchema,
   updateSinhVienSchema,
@@ -14,19 +16,36 @@ import {
 
 const router = Router();
 
-// GET /api/v1/sinh-vien -> Lấy danh sách sinh viên
+// GET /api/v1/sinh-vien -> Lấy danh sách sinh viên (Public)
 router.get('/', getDanhSachSinhVien);
 
-// GET /api/v1/sinh-vien/:maSV -> Tìm sinh viên theo mã
+// GET /api/v1/sinh-vien/:maSV -> Tìm sinh viên theo mã (Public)
 router.get('/:maSV', getSinhVienTheoMa);
 
-// POST /api/v1/sinh-vien -> Thêm sinh viên mới (qua validation)
-router.post('/', validate(createSinhVienSchema), taoSinhVien);
+// POST /api/v1/sinh-vien -> Thêm sinh viên mới (Yêu cầu đăng nhập quyền Admin + Validation)
+router.post(
+  '/',
+  isAuth,
+  isAdmin,
+  validate(createSinhVienSchema),
+  taoSinhVien
+);
 
-// PUT /api/v1/sinh-vien/:maSV -> Cập nhật thông tin sinh viên (qua validation)
-router.put('/:maSV', validate(updateSinhVienSchema), capNhatSinhVien);
+// PUT /api/v1/sinh-vien/:maSV -> Cập nhật thông tin sinh viên (Yêu cầu đăng nhập quyền Admin + Validation)
+router.put(
+  '/:maSV',
+  isAuth,
+  isAdmin,
+  validate(updateSinhVienSchema),
+  capNhatSinhVien
+);
 
-// DELETE /api/v1/sinh-vien/:maSV -> Xóa sinh viên
-router.delete('/:maSV', xoaSinhVien);
+// DELETE /api/v1/sinh-vien/:maSV -> Xóa sinh viên (Yêu cầu đăng nhập quyền Admin)
+router.delete(
+  '/:maSV',
+  isAuth,
+  isAdmin,
+  xoaSinhVien
+);
 
 export default router;

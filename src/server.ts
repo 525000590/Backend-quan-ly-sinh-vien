@@ -4,6 +4,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import swaggerUi from 'swagger-ui-express';
 import sinhVienRoutes from './routes/sinhVien.routes.js';
+import authRoutes from './routes/auth.routes.js';
 import { loggerMiddleware } from './middlewares/logger.middleware.js';
 import { accessLogger } from './middlewares/access-log.middleware.js';
 import { errorMiddleware } from './middlewares/error.middleware.js';
@@ -48,10 +49,13 @@ app.get('/health', (req, res) => {
 // 6. Tài liệu Swagger UI tại /api-docs
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// 7. Gắn các tuyến đường API sinh viên
+// 7. Gắn các tuyến đường API xác thực & tài khoản
+app.use('/api/auth', authRoutes);
+
+// 8. Gắn các tuyến đường API sinh viên
 app.use('/api/v1/sinh-vien', sinhVienRoutes);
 
-// 8. Xử lý đường dẫn không tồn tại (404 Not Found)
+// 9. Xử lý đường dẫn không tồn tại (404 Not Found)
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -60,10 +64,10 @@ app.use((req, res) => {
   });
 });
 
-// 9. Middleware gom và xử lý lỗi tập trung (phải đặt ở cuối cùng)
+// 10. Middleware gom và xử lý lỗi tập trung (phải đặt ở cuối cùng)
 app.use(errorMiddleware);
 
-// 10. Hàm khởi động server: Kết nối CSDL trước khi mở HTTP port
+// 11. Hàm khởi động server: Kết nối CSDL trước khi mở HTTP port
 async function start(): Promise<void> {
   try {
     // Xác thực kết nối tới SQL Server
