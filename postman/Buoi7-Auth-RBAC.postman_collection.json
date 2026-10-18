@@ -22,6 +22,11 @@
       "type": "string"
     },
     {
+      "key": "invalidToken",
+      "value": "invalid_test_token_signature",
+      "type": "string"
+    },
+    {
       "key": "testMaSV",
       "value": "SV098",
       "type": "string"
@@ -205,7 +210,7 @@
       "name": "A09 - Profile với token sai chữ ký",
       "request": {
         "method": "GET",
-        "header": [{ "key": "Authorization", "value": "Bearer saiChukyToken123456" }],
+        "header": [{ "key": "Authorization", "value": "Bearer {{invalidToken}}" }],
         "url": { "raw": "{{baseUrl}}/api/auth/profile", "host": ["{{baseUrl}}"], "path": ["api", "auth", "profile"] }
       },
       "event": [{
@@ -304,7 +309,7 @@
         "method": "PUT",
         "header": [
           { "key": "Content-Type", "value": "application/json" },
-          { "key": "Authorization", "value": "Bearer saiToken" }
+          { "key": "Authorization", "value": "Bearer {{invalidToken}}" }
         ],
         "body": {
           "mode": "raw",
