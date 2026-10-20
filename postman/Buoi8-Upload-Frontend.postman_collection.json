@@ -27,8 +27,13 @@
       "type": "string"
     },
     {
+      "key": "cleanAvatarPath",
+      "value": "uploads/b41a7b5c-0a5e-4c2a-bc17-f332b283345a.png",
+      "type": "string"
+    },
+    {
       "key": "uploadedAvatarUrl",
-      "value": "",
+      "value": "/uploads/b41a7b5c-0a5e-4c2a-bc17-f332b283345a.png",
       "type": "string"
     }
   ],
@@ -83,6 +88,8 @@
             "    pm.expect(b.data.avatarUrl).to.be.a('string');",
             "    pm.expect(b.data.avatarUrl.startsWith('/uploads/')).to.be.true;",
             "    pm.collectionVariables.set('uploadedAvatarUrl', b.data.avatarUrl);",
+            "    const clean = b.data.avatarUrl.startsWith('/') ? b.data.avatarUrl.substring(1) : b.data.avatarUrl;",
+            "    pm.collectionVariables.set('cleanAvatarPath', clean);",
             "});"
           ]
         }
@@ -93,7 +100,7 @@
       "request": {
         "method": "GET",
         "header": [],
-        "url": { "raw": "{{baseUrl}}{{uploadedAvatarUrl}}", "host": ["{{baseUrl}}"], "path": ["{{uploadedAvatarUrl}}"] }
+        "url": { "raw": "{{baseUrl}}/{{cleanAvatarPath}}", "host": ["{{baseUrl}}"], "path": ["{{cleanAvatarPath}}"] }
       },
       "event": [{
         "listen": "test",

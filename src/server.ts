@@ -52,6 +52,14 @@ app.use(
 // 4. Phân tích cú pháp JSON trong request body
 app.use(express.json());
 
+// Chuẩn hóa URL loại bỏ các dấu gạch chéo kép (ví dụ: //uploads -> /uploads)
+app.use((req, res, next) => {
+  if (req.url.startsWith('//')) {
+    req.url = req.url.replace(/^\/+/, '/');
+  }
+  next();
+});
+
 // 5. Phục vụ ảnh tĩnh công khai từ thư mục public/uploads
 app.use('/uploads', express.static(path.resolve('public/uploads')));
 
