@@ -78,6 +78,40 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalError'
+  /api/auth/me/avatar:
+    post:
+      tags: [Auth]
+      summary: Tải lên và cập nhật ảnh đại diện cá nhân
+      operationId: uploadAvatar
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [avatar]
+              properties:
+                avatar:
+                  type: string
+                  format: binary
+                  description: File ảnh định dạng JPEG hoặc PNG (tối đa 2MB)
+      responses:
+        '200':
+          description: Cập nhật ảnh đại diện thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvatarResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /api/v1/sinh-vien:
     get:
       tags: [SinhVien]
@@ -229,6 +263,18 @@ components:
         fullName: { type: string, example: Nguyen Minh An }
         email: { type: string, format: email, example: an.lab@example.com }
         role: { type: string, example: student }
+        avatarUrl: { type: string, nullable: true, example: '/uploads/abc-123.png' }
+    AvatarResponse:
+      type: object
+      required: [success, message, data]
+      properties:
+        success: { type: boolean, enum: [true], example: true }
+        message: { type: string, example: Cập nhật ảnh đại diện thành công }
+        data:
+          type: object
+          required: [avatarUrl]
+          properties:
+            avatarUrl: { type: string, example: '/uploads/abc-123.png' }
     UserResponse:
       type: object
       required: [success, message, data]
@@ -324,6 +370,12 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
     Forbidden:
       description: Quyền truy cập bị từ chối - Yêu cầu vai trò Admin
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    PayloadTooLarge:
+      description: Dung lượng file vượt quá giới hạn cho phép (2MB)
       content:
         application/json:
           schema:

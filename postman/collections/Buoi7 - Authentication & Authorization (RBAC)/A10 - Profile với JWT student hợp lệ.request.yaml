@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{baseUrl}}/api/auth/profile"
+method: GET
+headers:
+  Authorization: Bearer {{studentToken}}
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('A10 - Status là 200 OK', function () { pm.response.to.have.status(200); });
+      const b = pm.response.json();
+      pm.test('A10 - Trả thông tin hồ sơ student', function () { pm.expect(b.data.email).to.eql('an.lab@example.com'); });
+    language: text/javascript
+order: 10000

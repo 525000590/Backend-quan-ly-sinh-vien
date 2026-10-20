@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/sinh-vien/SV001"
+method: PUT
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{studentToken}}
+body:
+  type: text
+  content: |-
+    {
+      "hoTen": "Student Try Put",
+      "email": "tryput@example.com",
+      "maLop": "25CT114"
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test('B06 - Status là 403 Forbidden', function () { pm.response.to.have.status(403); });
+    language: text/javascript
+order: 17000

@@ -1,0 +1,22 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/sinh-vien/{{testMaSV}}"
+method: PUT
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{adminToken}}
+body:
+  type: text
+  content: |-
+    {
+      "hoTen": "Nguyễn Văn Admin Updated",
+      "email": "admin.updated@example.com",
+      "maLop": "25CT114"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('B08 - Status là 200 OK', function () { pm.response.to.have.status(200); });
+      const b = pm.response.json();
+      pm.test('B08 - Đúng hoTen mới', function () { pm.expect(b.data.hoTen).to.eql('Nguyễn Văn Admin Updated'); });
+    language: text/javascript
+order: 19000

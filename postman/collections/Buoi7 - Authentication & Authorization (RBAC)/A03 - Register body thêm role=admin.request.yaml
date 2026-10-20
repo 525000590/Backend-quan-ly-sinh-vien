@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/auth/register"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "fullName": "Hacker",
+      "email": "hacker@example.com",
+      "password": "Hacker@123",
+      "role": "admin"
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test('A03 - Status là 400 từ chối trường lạ', function () { pm.response.to.have.status(400); });
+    language: text/javascript
+order: 3000

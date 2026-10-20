@@ -1,4 +1,5 @@
 import type { ErrorRequestHandler } from 'express';
+import multer from 'multer';
 import { AppError } from '../utils/AppError.js';
 
 /**
@@ -16,7 +17,33 @@ export const errorMiddleware: ErrorRequestHandler = (err, req, res, next) => {
     return;
   }
 
-  // 2. Xử lý lỗi định dạng JSON do express.json() parse thất bại (SyntaxError)
+  // 2. Xử lý lỗi từ Multer (quá kích thước 2MB -> 413, sai field name -> 400)
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      res.status(413).json({
+        success: false,
+        message: 'Dung lượng file vượt quá giới hạn 2MB',
+        data: null,
+      });
+      return;
+    }
+    if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+      res.status(400).json({
+        success: false,
+        message: 'Field file không hợp lệ, yêu cầu tên field là "avatar"',
+        data: null,
+      });
+      return;
+    }
+    res.status(400).json({
+      success: false,
+      message: `Lỗi upload file: ${err.message}`,
+      data: null,
+    });
+    return;
+  }
+
+  // 3. Xử lý lỗi định dạng JSON do express.json() parse thất bại (SyntaxError)
   if (err instanceof SyntaxError && 'body' in err) {
     res.status(400).json({
       success: false,

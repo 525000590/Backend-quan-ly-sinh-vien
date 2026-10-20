@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{baseUrl}}/api/auth/login"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "email": "khongtontai@example.com",
+      "password": "AnyPass@123"
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test('A07 - Status là 401 không lộ thông tin', function () { pm.response.to.have.status(401); });
+    language: text/javascript
+order: 7000

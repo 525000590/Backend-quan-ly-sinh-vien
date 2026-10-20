@@ -10,3 +10,4 @@ localResources:
 cloudResources:
   collections:
     ../postman/collections/HienMau_API_Automated_Tests: 744c1e73-9cae-44fa-a277-30cee9fc51d7
+    ../postman/collections/Buoi7 - Authentication & Authorization (RBAC): f4d90add-e040-4b8e-b6cf-0832201743dc

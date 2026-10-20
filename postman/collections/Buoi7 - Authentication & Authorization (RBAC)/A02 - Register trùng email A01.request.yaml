@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{baseUrl}}/api/auth/register"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "fullName": "Nguyen Minh An",
+      "email": "an.lab@example.com",
+      "password": "SinhVien@123"
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test('A02 - Status là 409 Conflict', function () { pm.response.to.have.status(409); });
+    language: text/javascript
+order: 2000

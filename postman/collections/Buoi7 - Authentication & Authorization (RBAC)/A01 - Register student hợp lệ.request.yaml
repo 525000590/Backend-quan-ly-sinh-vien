@@ -1,0 +1,25 @@
+$kind: http-request
+url: "{{baseUrl}}/api/auth/register"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "fullName": "Nguyen Minh An",
+      "email": "an.lab@example.com",
+      "password": "SinhVien@123"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('A01 - Status là 201', function () { pm.response.to.have.status(201); });
+      pm.test('A01 - User có role student, không lộ hash', function () {
+          const b = pm.response.json();
+          pm.expect(b.success).to.eql(true);
+          pm.expect(b.data.role).to.eql('student');
+          pm.expect(b.data.passwordHash).to.be.undefined;
+      });
+    language: text/javascript
+order: 1000

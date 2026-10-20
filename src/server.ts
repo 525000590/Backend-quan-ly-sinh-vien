@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import path from 'node:path';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -20,18 +21,41 @@ app.use(loggerMiddleware);
 // 2. Ghi nhật ký access.log bằng Morgan (chế độ append)
 app.use(accessLogger);
 
-// 3. Middleware bảo mật và CORS (tắt CSP để Swagger UI render giao diện mượt mà)
+// 3. Middleware bảo mật và CORS
 app.use(
   helmet({
     contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
   })
 );
-app.use(cors());
+
+// Cấu hình CORS cho phép Origin của Vite frontend (localhost:5173)
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Cho phép requests không có origin (như curl, postman, mobile app) hoặc nằm trong danh sách cho phép
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Chặn bởi chính sách CORS: Origin không được phép'));
+      }
+    },
+    credentials: true,
+  })
+);
 
 // 4. Phân tích cú pháp JSON trong request body
 app.use(express.json());
 
-// 5. Tuyến đường cơ bản kiểm tra server
+// 5. Phục vụ ảnh tĩnh công khai từ thư mục public/uploads
+app.use('/uploads', express.static(path.resolve('public/uploads')));
+
+// 6. Tuyến đường cơ bản kiểm tra server
 app.get('/', (req, res) => {
   res.status(200).json({
     success: true,

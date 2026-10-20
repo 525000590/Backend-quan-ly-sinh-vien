@@ -1,0 +1,10 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/sinh-vien/SV098"
+method: DELETE
+headers:
+  Authorization: Bearer {{adminToken}}
+scripts:
+  - type: afterResponse
+    code: pm.test('B12 - Status là 404 Not Found', function () { pm.response.to.have.status(404); });
+    language: text/javascript
+order: 23000

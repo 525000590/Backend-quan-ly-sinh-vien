@@ -1,0 +1,8 @@
+$kind: collection
+description: "Postman Collection kiểm thử 24 test case Buổi 07: Auth, JWT, isAuth, isAdmin và CRUD SinhVien được bảo vệ."
+variables:
+  baseUrl: http://localhost:5000
+  studentToken: ""
+  adminToken: ""
+  invalidToken: invalid_test_token_signature
+  testMaSV: SV098

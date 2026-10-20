@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/sinh-vien/{{testMaSV}}"
+method: PUT
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{invalidToken}}
+body:
+  type: text
+  content: |-
+    {
+      "hoTen": "Update No Auth",
+      "email": "noauth@example.com",
+      "maLop": "25CT114"
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test('B03 - Status là 401 Unauthorized', function () { pm.response.to.have.status(401); });
+    language: text/javascript
+order: 14000

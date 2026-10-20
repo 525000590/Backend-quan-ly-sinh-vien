@@ -1,0 +1,20 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/sinh-vien"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{adminToken}}
+body:
+  type: text
+  content: |-
+    {
+      "maSV": "SV001",
+      "hoTen": "Trùng Mã",
+      "email": "trung@example.com",
+      "maLop": "25CT114"
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test('B11 - Status là 409 Conflict', function () { pm.response.to.have.status(409); });
+    language: text/javascript
+order: 22000

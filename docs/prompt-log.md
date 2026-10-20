@@ -302,3 +302,160 @@ export const authorize = (allowedRoles: string[]) => {
      - Người dùng thông thường (role `student`) chỉ được cấp quyền đọc danh sách sinh viên (`GET /api/v1/sinh-vien`) và xem hồ sơ cá nhân của chính mình (`GET /api/auth/profile`).
      - Quyền chỉnh sửa và thay đổi cấu trúc dữ liệu (`POST`, `PUT`, `DELETE` sinh viên) chỉ được cấp độc quyền cho người dùng có vai trò `admin`.
      - Tài khoản database `sv_app` chỉ được cấp quyền trên các bảng cần thiết, không có quyền quản trị cấp máy chủ (`sysadmin`).
+
+
+---
+
+# Prompt Log - Buổi 08: Upload Hình Ảnh & Kết Nối Frontend - Backend (Chương 07)
+
+## 1. Bối cảnh dự án
+- **Dự án**: `backend-quan-ly-sinh-vien` (Node.js, Express 5, TypeScript ESM/NodeNext, Sequelize 6, SQL Server, JWT, Zod, Multer) + Frontend độc lập trong thư mục `frontend/` (Vite, React 19, TypeScript, Axios).
+- **Mục tiêu**:
+  - Xây dựng tính năng upload Avatar an toàn cho người dùng đang đăng nhập bằng Multer (giới hạn dung lượng <= 2MB, kiểm tra chữ ký/magic bytes file thực tế chống giả mạo, phục vụ tĩnh qua `express.static`).
+  - Cấu hình CORS chặt chẽ theo danh sách Origin của Frontend (`http://localhost:5173`).
+  - Xây dựng ứng dụng Frontend React hoàn chỉnh kết nối trực tiếp với Backend API: Đăng nhập nhận JWT trong bộ nhớ, hiển thị bảng sinh viên (Loading, Empty, Error, Retry), phân quyền Admin hiển thị nút Xóa (hỏi xác nhận trước khi gọi DELETE), và Component upload Avatar bằng FormData kèm xem trước ảnh.
+
+---
+
+## 2. Nhật ký Prompt theo khung CTCO (Context - Task - Constraint - Output)
+
+### Prompt 0: Khảo sát dự án và chốt trạng thái ban đầu
+- **Context**: Tiếp tục đúng `backend-quan-ly-sinh-vien` sau Chương 06 (đã có CRUD SinhVien, Login, Register, Profile, RBAC, Swagger YAML).
+- **Task**: Kiểm tra trạng thái build `pnpm build`, kiểm tra bảng `dbo.Users` và xác định vị trí tích hợp upload Avatar và CORS.
+- **Constraint**: Chưa viết code mới; không tạo Backend thứ hai; không sửa đổi file khi chưa kiểm chứng; không đưa secret vào git.
+- **Output**: Bảng phân công file: bổ sung cột `avatarUrl` trong `dbo.Users`, middleware `upload.middleware.ts`, cấu hình CORS và static file trong `server.ts`, mở rộng `openapi.yaml`.
+
+### Prompt 1: Bổ sung avatarUrl an toàn trong SQL Server & Model
+- **Context**: Dự án đã có bảng `dbo.Users` với các trường `id`, `fullName`, `email`, `passwordHash`, `role`.
+- **Task**: Tạo script vá `sql/05-add-avatar-url.sql` bổ sung cột `avatarUrl NVARCHAR(255) NULL` và ánh xạ vào model Sequelize `User`.
+- **Constraint**: Không `DROP` bảng, không dùng `sync({ force: true })` hay `sync({ alter: true })`, không làm mất các User hiện có, script phải chạy được nhiều lần (idempotent).
+- **Output**: File `sql/05-add-avatar-url.sql` và cập nhật `src/models/user.model.ts`.
+
+### Prompt 2: Cấu hình Multer: Chỉ nhận ảnh hợp lệ <= 2MB & kiểm tra chữ ký file thực
+- **Context**: Cần nhận file ảnh gửi qua `multipart/form-data` ở Express TypeScript.
+- **Task**: Tạo middleware `src/middlewares/upload.middleware.ts` lưu file vào `public/uploads/`, giới hạn 2MB (2.097.152 bytes), sinh tên file duy nhất bằng `crypto.randomUUID()`, kiểm tra magic bytes thực tế để từ chối file văn bản đổi tên thành `.png`.
+- **Constraint**: Field name bắt buộc là `avatar`; khi vượt quá 2MB phải trả HTTP 413 (`LIMIT_FILE_SIZE`); dọn sạch file rác nếu kiểm tra nội dung thất bại; không để lộ thư mục upload ra ngoài tầm kiểm soát.
+- **Output**: File `src/middlewares/upload.middleware.ts` và tích hợp bắt `MulterError` trong `src/middlewares/error.middleware.ts`.
+
+### Prompt 3: Tạo POST /api/auth/me/avatar và cập nhật đúng User
+- **Context**: Đã có `isAuth` trích xuất danh tính người dùng vào `req.user`.
+- **Task**: Tạo route `POST /api/auth/me/avatar` với thứ tự `isAuth` -> `upload.single('avatar')` -> `uploadAvatarController`.
+- **Constraint**: Lấy ID người dùng từ `req.user.sub` (tuyệt đối không tin `req.body.userId`); đường dẫn lưu trong DB là URL tương đối `/uploads/<filename>`; dọn file mới nếu cập nhật DB thất bại.
+- **Output**: Controller `uploadAvatarController`, Service `updateUserAvatar`, Route trong `src/routes/auth.routes.ts`, và `app.use('/uploads', express.static('public/uploads'))` trong `src/server.ts`.
+
+### Prompt 4: Lập bộ kiểm thử Upload (U01 – U12)
+- **Context**: Endpoint upload Avatar cần được kiểm chứng nghiêm ngặt.
+- **Task**: Viết kịch bản kiểm thử tự động `src/scripts/test-buoi8-upload.ts` và tạo Postman collection `postman/Buoi8-Upload-Frontend.postman_collection.json`.
+- **Constraint**: Không tạo token giả; kiểm tra đủ 12 trường hợp từ U01 đến U12; xác nhận không để lại file rác trên đĩa khi gặp lỗi.
+- **Output**: Bộ test U01–U12 chạy đạt 100% (12/12 ca PASS).
+
+### Prompt 5: Swagger YAML và công khai ảnh tĩnh đúng mức
+- **Context**: Tài liệu `docs/openapi.yaml` cần mô tả đầy đủ API mới.
+- **Task**: Bổ sung endpoint `POST /api/auth/me/avatar` nhận `multipart/form-data`, yêu cầu `bearerAuth`, các mã phản hồi 200, 400, 401, 413, 500, và bổ sung `avatarUrl` vào schema `User`.
+- **Constraint**: Chuẩn OpenAPI 3.0.3, không trùng lặp các component hiện có.
+- **Output**: `docs/openapi.yaml` đã cập nhật.
+
+### Prompt 6: Khởi tạo Frontend Vite + React và thiết lập CORS
+- **Context**: Backend chạy tại `http://localhost:5000`; Frontend dự kiến chạy tại `http://localhost:5173`.
+- **Task**: Khởi tạo ứng dụng trong `frontend/` bằng Vite + React + TypeScript; cài đặt Axios; cấu hình CORS trong Backend chỉ cho phép Origin của Vite.
+- **Constraint**: Không mở wildcard `origin: '*'`; không hardcode URL mà dùng `VITE_API_BASE_URL` trong file `.env`.
+- **Output**: Dự án `frontend/`, client Axios `frontend/src/api/client.ts`, cấu hình CORS trong `src/server.ts`.
+
+### Prompt 7: Hiển thị danh sách SinhVien bằng Axios GET
+- **Context**: Backend cung cấp `GET /api/v1/sinh-vien` trả về `{ success, message, data: [...] }`.
+- **Task**: Viết component `SinhVienTable.tsx` gọi API qua Axios; hiển thị bảng 4 cột (`maSV`, `hoTen`, `email`, `maLop`); xử lý các trạng thái Loading, Empty, Error kèm nút Thử lại.
+- **Constraint**: Đọc mảng chính xác tại `response.data.data`; không giả định `response.data` là mảng; tránh lỗi setState sau khi unmount.
+- **Output**: File `frontend/src/components/SinhVienTable.tsx`.
+
+### Prompt 8: Đăng nhập qua React và sử dụng Bearer JWT
+- **Context**: Tái sử dụng `POST /api/auth/login` và `GET /api/auth/profile` của Chương 06.
+- **Task**: Viết component `Login.tsx` nhập email/password; gửi request đăng nhập; lưu token trong bộ nhớ ứng dụng; gọi Profile để hiển thị thông tin; có nút Đăng xuất.
+- **Constraint**: Không lưu token vào LocalStorage để tránh rủi ro XSS; xử lý đúng mã lỗi 401 khi đăng nhập sai hoặc token hết hạn.
+- **Output**: File `frontend/src/components/Login.tsx`.
+
+### Prompt 9: Nút Xóa sinh viên: Chỉ Admin thực thi
+- **Context**: `DELETE /api/v1/sinh-vien/:maSV` yêu cầu cả `isAuth` và `isAdmin`.
+- **Task**: Thêm nút Xóa ở mỗi dòng trong `SinhVienTable` khi `profile.role === 'admin'`; hiển thị hộp thoại xác nhận mã SV trước khi xóa; gửi Axios DELETE kèm header Authorization Bearer; làm mới danh sách sau khi xóa thành công.
+- **Constraint**: Tài khoản student không thấy nút xóa; nếu cố tình ép gọi qua API thì Backend vẫn trả 403; không xóa dòng trên UI khi server trả lỗi.
+- **Output**: Tích hợp logic xóa vào `SinhVienTable.tsx`.
+
+### Prompt 10: Upload Avatar trực tiếp trên giao diện React
+- **Context**: Đã có endpoint `POST /api/auth/me/avatar`.
+- **Task**: Viết component `AvatarUpload.tsx` cho phép chọn ảnh (accept jpeg/png); kiểm tra trước dung lượng 2MB tại trình duyệt; đóng gói `FormData` với field `avatar`; gửi kèm JWT; hiển thị ảnh đại diện từ URL máy chủ.
+- **Constraint**: Không tự đặt header Content-Type thiếu boundary; refresh Profile sau khi upload thành công; hiển thị ảnh thông qua `${API_BASE_URL}${avatarUrl}`.
+- **Output**: File `frontend/src/components/AvatarUpload.tsx` và giao diện tổng hợp trong `frontend/src/App.tsx`.
+
+---
+
+## 3. Phản biện đoạn code AI nguy hiểm (Security Review)
+
+### Bảng phân tích lỗ hổng & biện pháp khắc phục:
+
+| STT | Đoạn code sai / Lỗ hổng | Rủi ro & Hệ quả | Biện pháp khắc phục chuẩn |
+|:---:|---|---|---|
+| **1** | Bỏ qua middleware `isAuth` | Bất kỳ ai không đăng nhập cũng có thể gửi file làm tràn ngập ổ đĩa server (DDoS/Storage exhaustion). | Bắt buộc đặt `isAuth` **trước** `Multer` để chặn người dùng nặc danh ngay lập tức. |
+| **2** | Tin cậy `req.body.userId` | Kẻ tấn công có thể sửa đổi ảnh đại diện của người dùng khác (Insecure Direct Object References - IDOR). | Lấy ID người dùng độc quyền từ `req.user.sub` đã được JWT giải mã và xác thực. |
+| **3** | Dùng nguyên `req.file.originalname` | Dễ bị tấn công Path Traversal (`../../malicious.php`), ghi đè tệp của người khác hoặc lỗi ký tự đặc biệt trên OS. | Sinh tên file ngẫu nhiên duy nhất phía server bằng `crypto.randomUUID() + ext`. |
+| **4** | Không cấu hình giới hạn kích thước (`limits`) | Kẻ xấu có thể upload file hàng trăm Megabyte làm sập server hoặc cạn kiệt dung lượng đĩa. | Giới hạn nghiêm ngặt `limits: { fileSize: 2 * 1024 * 1024 }` và trả về HTTP 413. |
+| **5** | Không kiểm tra nội dung thực tế của file | File mã độc dạng thực thi, shell script, hoặc file văn bản có thể bị đổi đuôi giả mạo thành `.png` để vượt qua bộ lọc đơn giản. | Kiểm tra chữ ký file thực tế (Magic bytes: PNG `89 50 4E 47...`, JPEG `FF D8 FF...`); xóa file ngay nếu sai. |
+| **6** | CORS wildcard `app.use(cors())` mở toàn bộ | Bất kỳ website độc hại nào cũng có thể gửi request cross-origin từ trình duyệt của nạn nhân. | Cấu hình allowlist nguồn gốc cụ thể (`origin: ['http://localhost:5173']`) và bật `credentials: true`. |
+| **7** | Lưu chỉ originalname vào CSDL | Đường dẫn không có tiền tố thư mục phục vụ tĩnh `/uploads/`, client không thể truy cập được ảnh qua HTTP. | Lưu đường dẫn tương đối chuẩn `/uploads/<server-generated-filename>`. |
+
+---
+
+## 4. Trả lời 12 câu hỏi bảo vệ bài thực hành (Oral Defense)
+
+1. **`application/json` khác `multipart/form-data` ở điểm nào? Vì sao `express.json()` không đủ cho file?**
+   - `application/json` mã hóa dữ liệu thành chuỗi văn bản JSON, chỉ phù hợp cho văn bản hoặc dữ liệu có cấu trúc đơn giản. Nó không hiệu quả và không hỗ trợ truyền tải trực tiếp dữ liệu nhị phân (binary stream) của tệp tin.
+   - `multipart/form-data` phân tách nội dung request thành nhiều phần (parts) ngăn cách bởi các đường biên (boundary). Mỗi phần có header riêng (tên trường, filename, Content-Type) và body có thể chứa chuỗi nhị phân nguyên bản của file.
+   - Middleware `express.json()` chỉ có nhiệm vụ đọc và phân tích các request có Content-Type là `application/json`. Nó hoàn toàn bỏ qua hoặc không thể phân tách luồng nhị phân đa phần của `multipart/form-data`, do đó cần đến thư viện chuyên dụng như `multer`.
+
+2. **Điều gì xảy ra khi FormData dùng `photo` nhưng Multer cấu hình `single("avatar")`?**
+   - Multer sẽ phát hiện tên field trong request không khớp với trường nó mong đợi (`avatar`).
+   - Multer sẽ phát sinh lỗi `MulterError: Unexpected field` với mã lỗi `LIMIT_UNEXPECTED_FILE`. Nếu có error middleware xử lý, server sẽ phản hồi HTTP `400 Bad Request`. Request bị từ chối và file không được ghi vào thư mục lưu trữ.
+
+3. **`req.file` và `req.body` nằm ở đâu sau Multer? `req.user` xuất hiện ở bước nào?**
+   - Sau khi Multer xử lý xong:
+     - `req.file`: chứa đối tượng metadata của file vừa upload (filename, path, size, mimetype, originalname).
+     - `req.body`: chứa các trường dữ liệu dạng text gửi kèm trong form-data (nếu có).
+   - `req.user`: xuất hiện từ middleware `isAuth` (chạy trước Multer). `isAuth` giải mã JWT từ header `Authorization: Bearer <token>` và gán payload vào `req.user`.
+
+4. **Vì sao gọi `isAuth` trước Multer? Có cần `isAdmin` để User đổi Avatar chính mình không?**
+   - Gọi `isAuth` trước Multer là nguyên tắc phòng thủ chiều sâu quan trọng: Nếu một request không có token hoặc token không hợp lệ, hệ thống sẽ ngắt luồng và trả về HTTP `401 Unauthorized` ngay lập tức, ngăn không cho Multer tốn tài nguyên CPU/ổ đĩa để tiếp nhận và ghi file lên đĩa.
+   - **Không cần** `isAdmin` để người dùng đổi Avatar chính mình, vì ảnh đại diện là tài nguyên cá nhân của mỗi tài khoản. Chỉ cần xác thực đúng danh tính qua `isAuth` là người dùng có quyền cập nhật hồ sơ của chính mình.
+
+5. **Vì sao không nhận `userId` trong body cho endpoint `/me/avatar`?**
+   - Nếu nhận `userId` từ body, người dùng A có thể truyền `userId` của người dùng B, dẫn đến lỗ hổng IDOR (Insecure Direct Object References) nghiêm trọng, cho phép một người dùng tùy tiện thay đổi ảnh của người khác.
+   - Luôn luôn lấy ID từ `req.user.sub` đã được hệ thống xác minh qua chữ ký JWT để đảm bảo an toàn tuyệt đối.
+
+6. **Ổ đĩa chứa dữ liệu nào, còn `dbo.Users.avatarUrl` chứa giá trị gì?**
+   - **Ổ đĩa** (thư mục vật lý `public/uploads/`): Lưu trữ file nhị phân thực tế của ảnh (ví dụ: `c54500f4-3356-4590-ba1c-fba06d01cc11.png`).
+   - **`dbo.Users.avatarUrl`** trong CSDL: Chỉ lưu chuỗi đường dẫn URL tương đối (ví dụ: `/uploads/c54500f4-3356-4590-ba1c-fba06d01cc11.png`). Cơ sở dữ liệu không bao giờ lưu trữ trực tiếp file nhị phân để tránh làm phình to dung lượng database và suy giảm hiệu năng truy vấn.
+
+7. **2MB tương ứng bao nhiêu byte? File 2.200.000 byte nên trả status nào?**
+   - \(2 \text{ MB} = 2 \times 1024 \times 1024 = 2.097.152 \text{ bytes}\).
+   - File 2.200.000 bytes lớn hơn 2.097.152 bytes, do đó Multer sẽ kích hoạt lỗi `LIMIT_FILE_SIZE` và server phải trả về mã HTTP **`413 Payload Too Large`**.
+
+8. **Chỉ kiểm mimetype và `.png` có đủ để khẳng định file là ảnh PNG hợp lệ không?**
+   - **Hoàn toàn không đủ.**
+   - Mimetype và phần mở rộng (extension) là những thông tin do client tự gửi lên trong header HTTP và tên file, kẻ tấn công có thể dễ dàng đổi tên file script mã độc hoặc file text thành `.png` và giả mạo mimetype thành `image/png`.
+   - Để khẳng định ảnh hợp lệ, bắt buộc phải kiểm tra **Magic Bytes (chữ ký số đầu file)**: với PNG, 8 byte đầu tiên phải khớp đúng `89 50 4E 47 0D 0A 1A 0A`.
+
+9. **CORS kiểm soát điều gì? Vì sao Postman gọi API được nhưng browser lại báo CORS?**
+   - CORS (Cross-Origin Resource Sharing) là cơ chế bảo mật do **trình duyệt web** thực thi để ngăn chặn các trang web độc hại đọc trộm tài nguyên từ một domain/origin khác mà không có sự cho phép của server.
+   - Postman (hoặc curl/mobile app) là ứng dụng client độc lập, không phải trình duyệt web, nên nó không tuân theo và không áp đặt chính sách Same-Origin Policy của trình duyệt. Do đó Postman gọi API thành công bình thường, trong khi trình duyệt sẽ chặn đứng nếu server không trả về header `Access-Control-Allow-Origin` phù hợp.
+
+10. **Axios GET `/api/v1/sinh-vien` nên đọc mảng ở `response.data` hay `response.data.data`?**
+    - Phải đọc ở **`response.data.data`**.
+    - Vì theo hợp đồng JSON thống nhất của hệ thống, backend trả về cấu trúc bọc chuẩn: `{ success: true, message: "...", data: [...] }`.
+    - Khi Axios nhận phản hồi, toàn bộ JSON payload từ backend được đặt trong `response.data`. Do đó, mảng sinh viên nằm tại `response.data.data`.
+
+11. **Vì sao Student bị ẩn nút Xóa vẫn phải bị chặn DELETE ở Backend?**
+    - Ẩn nút trên giao diện chỉ là trải nghiệm người dùng (UX), hoàn toàn **không phải là biện pháp bảo mật**.
+    - Kẻ tấn công có thể dễ dàng mở DevTools, dùng Postman hoặc viết mã script gọi trực tiếp request `DELETE /api/v1/sinh-vien/:maSV` kèm token của Student.
+    - Do đó, tầng Backend bắt buộc phải có middleware `isAuth` + `isAdmin` kiểm tra vai trò để trả về HTTP `403 Forbidden` và chặn đứng mọi hành vi xóa trái phép.
+
+12. **Trình bày ba bằng chứng cần có để chứng minh upload Avatar thật sự thành công.**
+    - **Bằng chứng 1 (Phản hồi API)**: Postman / Network tab trả về HTTP `200 OK` với body `{ success: true, message: "...", data: { avatarUrl: "/uploads/<filename>.png" } }`.
+    - **Bằng chứng 2 (Hệ thống tệp vật lý)**: Trong thư mục `public/uploads/` trên ổ đĩa xuất hiện tệp ảnh mới với tên file ngẫu nhiên khớp với URL trả về, và có thể mở xem trực tiếp qua trình duyệt tại `http://localhost:5000/uploads/<filename>.png`.
+    - **Bằng chứng 3 (Cơ sở dữ liệu SQL Server)**: Truy vấn `SELECT avatarUrl FROM dbo.Users WHERE id = <userId>` xác nhận trường `avatarUrl` đã được cập nhật chính xác đường dẫn ảnh mới.

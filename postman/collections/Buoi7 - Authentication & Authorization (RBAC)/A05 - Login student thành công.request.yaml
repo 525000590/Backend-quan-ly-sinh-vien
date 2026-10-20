@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{baseUrl}}/api/auth/login"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "email": "an.lab@example.com",
+      "password": "SinhVien@123"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('A05 - Status là 200 OK', function () { pm.response.to.have.status(200); });
+      const b = pm.response.json();
+      pm.collectionVariables.set('studentToken', b.data.accessToken);
+      pm.test('A05 - Nhận accessToken hợp lệ', function () { pm.expect(b.data.accessToken).to.be.a('string'); });
+    language: text/javascript
+order: 5000

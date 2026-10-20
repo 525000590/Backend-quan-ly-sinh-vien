@@ -9,6 +9,7 @@ export interface UserResponseDTO {
   fullName: string;
   email: string;
   role: string;
+  avatarUrl?: string | null;
 }
 
 export interface LoginResponseDTO {
@@ -111,5 +112,23 @@ export async function getUserProfile(userId: number | string): Promise<UserRespo
     fullName: user.fullName,
     email: user.email,
     role: user.role,
+    avatarUrl: user.avatarUrl ?? null,
   };
+}
+
+/**
+ * Cập nhật đường dẫn ảnh đại diện cho người dùng
+ */
+export async function updateUserAvatar(
+  userId: number | string,
+  avatarUrl: string
+): Promise<string> {
+  const user = await User.findByPk(Number(userId));
+  if (!user) {
+    throw new AppError(404, 'Không tìm thấy người dùng');
+  }
+
+  user.avatarUrl = avatarUrl;
+  await user.save();
+  return user.avatarUrl!;
 }

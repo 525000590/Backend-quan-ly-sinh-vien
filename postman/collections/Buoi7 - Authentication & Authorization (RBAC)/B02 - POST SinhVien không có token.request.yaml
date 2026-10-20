@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/sinh-vien"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "maSV": "{{testMaSV}}",
+      "hoTen": "No Auth",
+      "email": "noauth@example.com",
+      "maLop": "25CT114"
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test('B02 - Status là 401 Unauthorized', function () { pm.response.to.have.status(401); });
+    language: text/javascript
+order: 13000

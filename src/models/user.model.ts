@@ -16,6 +16,7 @@ export class User extends Model<
   declare email: string;
   declare passwordHash: string;
   declare role: CreationOptional<string>;
+  declare avatarUrl: CreationOptional<string | null>;
 }
 
 User.init(
@@ -43,6 +44,11 @@ User.init(
       type: DataTypes.STRING(20),
       allowNull: false,
       defaultValue: 'student',
+    },
+    avatarUrl: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {
