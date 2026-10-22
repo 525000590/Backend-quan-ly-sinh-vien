@@ -459,3 +459,182 @@ export const authorize = (allowedRoles: string[]) => {
     - **Bằng chứng 1 (Phản hồi API)**: Postman / Network tab trả về HTTP `200 OK` với body `{ success: true, message: "...", data: { avatarUrl: "/uploads/<filename>.png" } }`.
     - **Bằng chứng 2 (Hệ thống tệp vật lý)**: Trong thư mục `public/uploads/` trên ổ đĩa xuất hiện tệp ảnh mới với tên file ngẫu nhiên khớp với URL trả về, và có thể mở xem trực tiếp qua trình duyệt tại `http://localhost:5000/uploads/<filename>.png`.
     - **Bằng chứng 3 (Cơ sở dữ liệu SQL Server)**: Truy vấn `SELECT avatarUrl FROM dbo.Users WHERE id = <userId>` xác nhận trường `avatarUrl` đã được cập nhật chính xác đường dẫn ảnh mới.
+
+
+---
+
+# Prompt Log - Buổi 09 / Chương 08: Truy Vấn Nâng Cao & Phân Trang - Xử Lý Lỗi Tập Trung
+
+## 1. Bối cảnh dự án
+- **Dự án**: `backend-quan-ly-sinh-vien` (Node.js, Express 5, TypeScript ESM/NodeNext, Sequelize 6, SQL Server 2014, Vite React Frontend).
+- **Mục tiêu**:
+  - **Lab 1 (Phân trang & Tìm kiếm)**: Nâng cấp `GET /api/v1/sinh-vien` với query validation qua Zod (`page >= 1` mặc định 1, `limit` 1–50 mặc định 10, `search` tối đa 80 ký tự đã trim), phân trang phía Database SQL Server qua `SinhVien.findAndCountAll({ where, limit, offset, order: [['maSV', 'ASC']] })`, cấu trúc response `{ success: true, message: "...", data: [...], pagination: { page, limit, totalItems, totalPages } }`. Cập nhật giao diện Vite React với thanh tìm kiếm và thanh điều hướng phân trang.
+  - **Lab 2 (Xử lý lỗi tập trung & Bảo mật)**: Chuẩn hóa phản hồi lỗi có trường `status`: `{ success: false, status: <code>, message: "...", data: null }`, tận dụng luồng async error tự động của Express 5, bảo vệ thông tin mật với lỗi 500 (che message gốc và stack trace trong production), bảo toàn toàn bộ hệ thống JWT, RBAC và Upload Avatar từ Chương 07.
+
+---
+
+## 2. Nhật ký Prompt theo khung CTCO (Context - Task - Constraint - Output)
+
+### Prompt 0: Khảo sát và sao lưu trạng thái Chương 07
+- **Context**: Tôi tiếp tục đúng `backend-quan-ly-sinh-vien` sau Chương 07: Express 5, TypeScript, Sequelize 6, SQL Server, Zod, JWT, Vite/React.
+- **Task**: Đọc `package.json`, `tsconfig.json`, GET `routes/controller/service`, `SinhVien` Model, `AppError`, `error.middleware.ts`, `docs/openapi.yaml`; vẽ luồng GET.
+- **Constraint**: Chưa sửa bất cứ file nào; không đọc `.env`; không giả định có Products, Orders hoặc lớp học nếu không tìm thấy.
+- **Output**: Bảng file/đúng vai trò/cần sửa hay giữ; xác định thiếu gì; checklist API nền và truy vấn SSMS cần test.
+- **Kết quả review**: Đảm bảo toàn bộ 5 CRUD SinhVien, các endpoint auth `/api/auth/login`, `/profile`, `/me/avatar` đều hoạt động 100%.
+
+### Prompt 1: Zod / validate query string trước khi truy vấn
+- **Context**: `GET SinhVien` cũ nhận `req.query`; project có Zod và `AppError` từ những chương trước.
+- **Task**: Tạo hoặc tái sử dụng query validation cho `page`, `limit`, `search` với mặc định 1/10/"" (rỗng), giới hạn limit 1–50 và search tối đa 80 ký tự.
+- **Constraint**: Sai trả về HTTP 400 thống nhất; không sửa middleware JWT/Avatar; không tự đổi TypeScript, ESM và cấu trúc response.
+- **Output**: File `src/validations/sinhVien.query.ts` và hàm `validateQuery` trong `src/middlewares/validate.middleware.ts`.
+- **Ghi chú kỹ thuật**: Dùng `.refine(/^\d+$/)` để chặn triệt để các chuỗi không phải số nguyên dương như `-1`, `0`, `1.5`, `abc` trước khi ép kiểu, tránh lỗi ngầm `Number(" ") = 0` hoặc `parseInt("2abc") = 2`.
+
+### Prompt 2: Service Sequelize findAndCountAll
+- **Context**: Project đang dùng `SinhVien` Model và Sequelize 6 kết nối SQL Server thật.
+- **Task**: Nâng cấp hàm lấy danh sách của Service bằng `SinhVien.findAndCountAll`, where từ search, order `maSV ASC`, limit/offset.
+- **Constraint**: Giữ `maSV`/`hoTen`/`email`/`maLop`, không thêm `id`/`timestamps`/`association` giả; không gọi `findAll` toàn bộ rồi `.slice()`.
+- **Output**: File `src/services/sinhVien.service.ts` nâng cấp `layDanhSachSinhVien(query: SinhVienQuery)`.
+- **Ghi chú kỹ thuật**: `offset = (page - 1) * limit`. Trả về `{ data: rows, pagination: { page, limit, totalItems: count, totalPages: count === 0 ? 0 : Math.ceil(count / limit) } }`.
+
+### Prompt 3: Controller + OpenAPI 3.0.3 YAML
+- **Context**: `GET /api/v1/sinh-vien` hiện có `data: []`; tài liệu API là `docs/openapi.yaml`.
+- **Task**: Gắn query đã validate vào Controller, trả `data: []` + `pagination`, cập nhật YAML chuẩn OpenAPI 3.0.3.
+- **Constraint**: Không đổi URL/method/status các API cũ; không khóa GET bằng JWT; không chuyển sang `swagger-jsdoc`.
+- **Output**: Cập nhật `src/controllers/sinhVien.controller.ts` và `docs/openapi.yaml` bổ sung tham số `page`, `limit`, `search`, schema `PaginationMeta` và response 400.
+
+### Prompt 4: Tìm kiếm kết hợp phân trang
+- **Context**: SQL Server đã có bảng `dbo.SinhVien`, cột `hoTen`; GET danh sách đã trả `rows`/`count`.
+- **Task**: Thêm search tùy chọn bằng Sequelize `where` + `Op.like`, đếm theo tập kết quả phù hợp, rồi order/paginate.
+- **Constraint**: Không lọc trên `rows` đã chia trang; không dùng raw SQL nội suy text; giữ validation và API cũ.
+- **Output**: Code xử lý search an toàn bằng `Op.like: '%${search}%'` tại `src/services/sinhVien.service.ts`. Đảm bảo `totalItems` đếm chính xác số lượng sinh viên sau khi filter điều kiện `hoTen LIKE ...`.
+
+### Prompt 5: Gắn phân trang vào Vite + React + Axios
+- **Context**: `frontend/` Vite React từ Chương 07 có component `SinhVienTable` và Axios client.
+- **Task**: Bổ sung ô tìm kiếm, nút đổi trang (Trước / Sau), metadata và trạng thái loading/error theo API mới.
+- **Constraint**: Không thay backend khác; không dùng `Array.slice()` để phân trang dữ liệu tải hết; giữ nguyên tính năng Login, Delete, Avatar.
+- **Output**: Nâng cấp `frontend/src/components/SinhVienTable.tsx`, `frontend/src/api/client.ts` và `frontend/src/App.css`.
+
+### Prompt 6: Audit Global Error Handling
+- **Context**: Tiếp tục Express 5 TypeScript trong project Chương 07; đã có `AppError` và `error.middleware.ts`.
+- **Task**: Đọc nguyên file hiện tại và kiểm tra luồng 400, 404, 500 cùng các lỗi JWT, Zod, Multer.
+- **Constraint**: Chỉ đề xuất sửa nhỏ nhất; chưa viết lại file khi không cần; không chuyển Express 5 thành Express 4.
+- **Output**: Rà soát `src/utils/AppError.ts` và `src/middlewares/error.middleware.ts`. Bổ sung cờ `isOperational = true` cho `AppError`.
+
+### Prompt 7: Chuẩn hóa error middleware
+- **Context**: API đang có `{ success, message, data }`; đã tồn tại `AppError` và Error Handler; dùng Express 5.
+- **Task**: Chuẩn hóa JSON lỗi 400/404/500, có status code; lỗi 500 phải che message gốc và có server logging.
+- **Constraint**: Không lộ stack production; chỉ thêm stack development nếu thỏa môi trường an toàn; giữ JWT/Multer errors và không trả hai response (`res.headersSent`).
+- **Output**: Cập nhật `src/middlewares/error.middleware.ts`: bổ sung trường `status`, ẩn stack và trả `"Lỗi hệ thống, vui lòng thử lại sau"` khi `NODE_ENV === 'production'`.
+
+### Prompt 8: Refactor ít nhất + tận dụng async error flow của Express 5
+- **Context**: Đã kiểm tra `AppError`, controller và errorHandler hiện tại; dự án chạy Express 5.
+- **Task**: Loại bỏ code trả lỗi lặp; bảo đảm lỗi Promise rejection từ async handler được tự động chuyển tới một error middleware sau các routes mà không cần bọc `try/catch` lặp đi lặp lại hay `asyncHandler`.
+- **Constraint**: Không tạo nhiều global handlers; không cần `asyncHandler` cho mọi Promise; giữ các status cũ, không che giấu lỗi.
+- **Output**: Tinh giản controller, giữ luồng `throw new AppError(...)` tự chuyển đến `errorMiddleware`.
+
+### Prompt 9: Chẩn đoán lỗi theo bằng chứng
+- **Context**: Đang ở bước kiểm thử Chương 08 và kiểm tra tính hồi quy toàn hệ thống.
+- **Task**: Xác minh các ca kiểm thử P01–P17 và E01–E10, nếu phát sinh lỗi thì trích xuất nguyên nhân từ terminal/network và đưa ra bản sửa ít nhất.
+- **Constraint**: Không phỏng đoán schema, không vô hiệu hóa JWT/validation, không làm ảnh hưởng các chức năng đang chạy tốt.
+- **Output**: Script kiểm thử tự động `src/scripts/test-buoi9-pagination-errors.ts` thực thi 26 ca kiểm thử đạt kết quả 100% PASS.
+
+---
+
+## 3. Hai câu hỏi phản biện AI bắt buộc (Trang 21)
+
+### Phản biện 1: Dùng findAll() rồi .slice() phía JavaScript
+- **Tình huống**: AI đề xuất dùng `SinhVien.findAll()` để lấy toàn bộ bảng từ SQL Server vào bộ nhớ RAM Node.js, sau đó dùng `data.slice((page - 1) * limit, page * limit)` để cắt trang và trả về Client.
+- **Chỉ ra sai phạm và rủi ro**:
+  1. **Hiệu năng thảm họa (Database OOM & Network Congestion)**: Khi bảng có 1.000.000 sinh viên, mỗi request lấy trang 1 (limit 10) sẽ ép SQL Server đọc 1.000.000 dòng, serialize qua mạng và nạp hàng trăm MB vào RAM của Node.js chỉ để lấy 10 dòng đầu. Gây nghẽn mạng, treo CPU và crash tiến trình Node.js (Out Of Memory).
+  2. **Vi phạm tiêu chí chấm điểm**: Đề bài yêu cầu rõ ràng: *"Mục đích của phân trang là giới hạn số bản ghi truyền về ở Database. React không được tải tất cả rồi tự cắt... Không bao giờ đẩy toàn bộ dữ liệu vào data rồi dùng Array.slice() để giả làm phân trang SQL Server"*.
+- **Cách viết lại chuẩn**:
+  Sử dụng `SinhVien.findAndCountAll({ where, limit, offset: (page - 1) * limit, order: [['maSV', 'ASC']] })`. Sequelize sẽ sinh ra câu lệnh SQL tối ưu với `OFFSET (page - 1) * limit ROWS FETCH NEXT limit ROWS ONLY`, chỉ truyền đúng số lượng bản ghi cần thiết từ SQL Server sang Backend.
+
+### Phản biện 2: Trả err.stack và err.message cho mọi lỗi 500
+- **Tình huống**: AI đề xuất viết error handler bằng cách gửi trực tiếp `res.status(500).json({ error: err.message, stack: err.stack })` ra client cho mọi loại lỗi hệ thống.
+- **Chỉ ra rủi ro bảo mật**:
+  1. **Lộ sơ đồ kiến trúc và lỗ hổng nội bộ**: `err.stack` tiết lộ cấu trúc thư mục ổ đĩa trên máy chủ (`C:\Users\...`), tên file mã nguồn, số dòng code, phiên bản các thư viện npm đang sử dụng. Kẻ tấn công có thể lợi dụng thông tin này để tìm kiếm lỗ hổng khai thác (CVE) tương ứng.
+  2. **Lộ thông tin nhạy cảm và chuỗi kết nối Database**: Nếu lỗi 500 phát sinh từ tầng Database hoặc Sequelize, `err.message` thường chứa nội dung câu lệnh SQL thuần, tên bảng, tên cột, thậm chí connection string chứa mật khẩu tài khoản SQL Server hoặc chuỗi bí mật JWT.
+- **Cách sửa chuẩn cho Production**:
+  - Ghi log chi tiết `console.error(err)` tại console máy chủ để lập trình viên giám sát.
+  - Phía Client chỉ nhận thông điệp chung an toàn: `message: "Lỗi hệ thống, vui lòng thử lại sau"`.
+  - Chỉ cho phép đính kèm trường `stack` khi và chỉ khi `process.env.NODE_ENV === 'development'`, tuyệt đối không bao giờ trả ra ở môi trường `production`.
+
+---
+
+## 4. 12 Câu hỏi bảo vệ bài thực hành (Trang 23)
+
+### 01. `page`, `limit` và `offset` khác nhau thế nào? `page=5` và `limit=20` thì `offset` là bao nhiêu?
+- **Khác nhau**:
+  - `page`: Số thứ tự của trang người dùng muốn xem (bắt đầu từ 1).
+  - `limit`: Số lượng bản ghi tối đa được phép trả về trên một trang.
+  - `offset`: Số lượng bản ghi cần bỏ qua tính từ đầu tập dữ liệu trước khi bắt đầu lấy các bản ghi của trang hiện tại.
+- **Công thức**: `offset = (page - 1) * limit`.
+- **Tính toán**: Với `page = 5` và `limit = 20`, `offset = (5 - 1) * 20 = 80`.
+- **Vị trí code**: [sinhVien.service.ts](file:///c:/Users/SWEET%20HOME/.gemini/antigravity/scratch/backend-quan-ly-sinh-vien/src/services/sinhVien.service.ts#L17).
+
+### 02. Vì sao phải `ORDER BY maSV` trước khi dùng `OFFSET/FETCH` trong SQL Server?
+- **Lý do**:
+  1. Cú pháp bắt buộc của SQL Server: Mệnh đề `OFFSET ... ROWS FETCH NEXT ... ROWS ONLY` đòi hỏi phải đi kèm với `ORDER BY`, nếu thiếu SQL Server sẽ báo lỗi cú pháp.
+  2. Tính ổn định và nhất quán (Determinism): Trong mô hình cơ sở dữ liệu quan hệ, dữ liệu trong bảng là tập hợp không có thứ tự tự nhiên. Nếu không chỉ định `ORDER BY`, SQL Server có thể trả về các bản ghi theo thứ tự ngẫu nhiên tùy thuộc vào index hoặc execution plan, dẫn đến hiện tượng bản ghi bị lặp lại hoặc bị nhảy mất giữa các trang. Khóa chính `maSV` đảm bảo thứ tự phân trang luôn ổn định tuyệt đối.
+- **Vị trí code**: [sinhVien.service.ts](file:///c:/Users/SWEET%20HOME/.gemini/antigravity/scratch/backend-quan-ly-sinh-vien/src/services/sinhVien.service.ts#L22).
+
+### 03. `findAll()` khác `findAndCountAll()` ra sao? `rows` và `count` dùng để làm gì?
+- **Khác nhau**:
+  - `findAll()` chỉ thực thi một câu lệnh `SELECT` để lấy danh sách các bản ghi thỏa mãn điều kiện.
+  - `findAndCountAll()` thực thi đồng thời hai việc: đếm tổng số bản ghi thỏa điều kiện `where` (tương đương `SELECT COUNT(*)`) và lấy danh sách các bản ghi của trang hiện tại theo `limit` và `offset`.
+- **Vai trò**:
+  - `rows`: Là mảng chứa các đối tượng sinh viên của trang hiện tại (gán vào `data` trả về cho Client).
+  - `count`: Là tổng số lượng bản ghi thỏa mãn điều kiện lọc trong toàn bộ CSDL (gán vào `pagination.totalItems` để tính toán `totalPages`).
+- **Vị trí code**: [sinhVien.service.ts](file:///c:/Users/SWEET%20HOME/.gemini/antigravity/scratch/backend-quan-ly-sinh-vien/src/services/sinhVien.service.ts#L19-L33).
+
+### 04. Vì sao `totalPages = Math.ceil(totalItems / limit)`? Khi không có dữ liệu thì trả gì?
+- **Lý do**: Phép chia `totalItems / limit` thường ra số thập phân khi trang cuối cùng không đủ `limit` bản ghi (ví dụ 5 sinh viên chia cho 2 sinh viên/trang = 2.5). Ta phải làm tròn lên (`Math.ceil`) để đảm bảo trang cuối vẫn có thể chứa số sinh viên dư đó (2.5 -> 3 trang).
+- **Khi không có dữ liệu (`totalItems = 0`)**:
+  - Quy ước của bài: `totalPages = 0`, `totalItems = 0`, `data = []` (mảng rỗng, không phải null), `page` vẫn giữ nguyên giá trị client yêu cầu.
+- **Vị trí code**: [sinhVien.service.ts](file:///c:/Users/SWEET%20HOME/.gemini/antigravity/scratch/backend-quan-ly-sinh-vien/src/services/sinhVien.service.ts#L30).
+
+### 05. Vì sao lọc search theo `hoTen` phải xảy ra trước khi tính `count` và lấy trang?
+- **Lý do**: Nếu lọc trên trang hiện tại (lấy 10 dòng về rồi mới `filter`), ta sẽ bỏ sót toàn bộ sinh viên thỏa mãn điều kiện nhưng nằm ở các trang khác (ví dụ: sinh viên "Lan Anh" nằm ở vị trí thứ 30 sẽ không bao giờ được tìm thấy nếu chỉ lấy 10 dòng đầu). Do đó, điều kiện `WHERE hoTen LIKE '%...%'` phải được áp dụng ngay tại SQL Server trước khi thực hiện `COUNT(*)` và `OFFSET/FETCH`. Khi đó `totalItems` phản ánh đúng tổng số kết quả tìm kiếm và các trang trả về đúng danh sách đã lọc.
+- **Vị trí code**: [sinhVien.service.ts](file:///c:/Users/SWEET%20HOME/.gemini/antigravity/scratch/backend-quan-ly-sinh-vien/src/services/sinhVien.service.ts#L12-L21).
+
+### 06. Nếu client gửi `page="abc"` hoặc `limit=-2`, lỗi phù hợp là 400 hay 500? Vì sao?
+- **Mã lỗi phù hợp**: Phải là **`400 Bad Request`**.
+- **Vì sao**: Lỗi này xuất phát từ phía người dùng gửi dữ liệu đầu vào không hợp lệ hoặc sai định dạng theo hợp đồng API, không phải do lỗi phần mềm hay sự cố máy chủ (lỗi 500). Hệ thống phải sử dụng Zod schema để chặn đứng các giá trị này ngay tại tầng validation và trả về 400 kèm thông báo rõ ràng, không bao giờ để dữ liệu sai chạm tới Database hoặc gây sập server.
+- **Vị trí code**: [sinhVien.query.ts](file:///c:/Users/SWEET%20HOME/.gemini/antigravity/scratch/backend-quan-ly-sinh-vien/src/validations/sinhVien.query.ts#L3-L22) và [validate.middleware.ts](file:///c:/Users/SWEET%20HOME/.gemini/antigravity/scratch/backend-quan-ly-sinh-vien/src/middlewares/validate.middleware.ts#L29-L43).
+
+### 07. Vì sao không nên trả `data={rows, pagination}` thay cho `data: []` của chương trước?
+- **Lý do**:
+  - **Bảo toàn tính tương thích ngược (Backward Compatibility)**: Từ Chương 04 đến Chương 07, hợp đồng thống nhất quy định `data` luôn là một mảng `data: [...]`. Nếu đổi thành `data: { rows, pagination }`, toàn bộ code Frontend hiện có (ví dụ: `response.data.data.map(...)`) sẽ lập tức bị crash với lỗi runtime `response.data.data.map is not a function`.
+  - **Thiết kế API chuẩn REST**: Metadata phân trang nên được đặt ở trường riêng biệt cấp cao nhất `pagination: { page, limit, totalItems, totalPages }`, trong khi `data` vẫn tiếp tục giữ vai trò là mảng chứa danh sách các thực thể.
+- **Vị trí code**: [sinhVien.controller.ts](file:///c:/Users/SWEET%20HOME/.gemini/antigravity/scratch/backend-quan-ly-sinh-vien/src/controllers/sinhVien.controller.ts#L13-L18).
+
+### 08. Axios gửi SQL tới Database hay gửi HTTP tới Backend? Chứng minh bằng Network.
+- **Khẳng định**: Axios là một HTTP Client chạy trên trình duyệt, nó **chỉ gửi các HTTP Request** (qua giao thức HTTP/HTTPS) tới Web Server Backend (Express), hoàn toàn **không thể và không bao giờ gửi câu lệnh SQL trực tiếp tới CSDL**.
+- **Chứng minh bằng DevTools Network**: Khi mở tab Network trong Chrome/Edge DevTools và thực hiện tìm kiếm/phân trang, ta thấy request gửi đi là:
+  - Request URL: `http://localhost:5000/api/v1/sinh-vien?page=2&limit=10&search=Anh`
+  - Request Method: `GET`
+  - Response Header: `Content-Type: application/json`
+  - Response Body: Chuỗi JSON chứa `success`, `data`, `pagination`. Không có bất kỳ kết nối TCP port 1433 hay gói tin TDS (Tabular Data Stream) nào xuất phát từ trình duyệt tới SQL Server.
+- **Vị trí code**: [client.ts](file:///c:/Users/SWEET%20HOME/.gemini/antigravity/scratch/backend-quan-ly-sinh-vien/frontend/src/api/client.ts#L22-L29).
+
+### 09. `AppError` và Global Error Middleware khác nhau về trách nhiệm?
+- **AppError**: Là một lớp kế thừa từ `Error` nguyên bản của JavaScript, có trách nhiệm **đại diện cho một lỗi nghiệp vụ có chủ đích** trong ứng dụng (operational error), lưu giữ mã HTTP status tương ứng (400, 401, 403, 404, 409) và thông điệp lỗi. Nó chỉ là đối tượng mang dữ liệu lỗi, không gửi response.
+- **Global Error Middleware**: Là hàm middleware 4 tham số `(err, req, res, next)` đặt ở cuối chuỗi ứng dụng Express, có trách nhiệm **bắt lấy mọi lỗi phát sinh trong hệ thống**, phân loại lỗi (AppError, ZodError, MulterError hay lỗi không lường trước 500) và **định dạng cấu trúc JSON phản hồi duy nhất gửi về cho Client** kèm mã HTTP phù hợp.
+- **Vị trí code**: [AppError.ts](file:///c:/Users/SWEET%20HOME/.gemini/antigravity/scratch/backend-quan-ly-sinh-vien/src/utils/AppError.ts#L1-L10) và [error.middleware.ts](file:///c:/Users/SWEET%20HOME/.gemini/antigravity/scratch/backend-quan-ly-sinh-vien/src/middlewares/error.middleware.ts#L6-L45).
+
+### 10. Express 5 chuyển lỗi từ async handler tới middleware như thế nào?
+- **Cơ chế trong Express 5**: Trong Express 4 cũ, các lỗi ném ra từ hàm `async` (Promise rejection) không được bắt tự động mà phải dùng `try/catch` rồi gọi `next(err)` hoặc bọc bằng wrapper helper `asyncHandler`. Tuy nhiên, **Express 5 đã hỗ trợ Promise gốc**: bất kỳ route handler nào trả về một `Promise` bị `reject`, Express 5 sẽ tự động bắt lấy lỗi đó và chuyển tiếp ngay tới middleware xử lý lỗi 4 tham số tiếp theo trong chuỗi mà không làm crash ứng dụng.
+- **Vị trí code**: [server.ts](file:///c:/Users/SWEET%20HOME/.gemini/antigravity/scratch/backend-quan-ly-sinh-vien/src/server.ts#L57-L61).
+
+### 11. Vì sao không được hiển thị stack trace và connection string ở production?
+- **Lý do bảo mật**:
+  - `stack trace` tiết lộ đường dẫn thư mục vật lý của server, cấu trúc mã nguồn, tên các hàm nội bộ và các thư viện phụ thuộc, giúp hacker dễ dàng dò quét lỗ hổng đã biết.
+  - `connection string` có thể chứa địa chỉ IP nội bộ, tên Database, tên đăng nhập và mật khẩu quản trị CSDL SQL Server. Nếu lộ ra ngoài, kẻ tấn công có thể truy cập trực tiếp vào CSDL để đánh cắp hoặc phá hủy toàn bộ dữ liệu của tổ chức.
+- **Vị trí code**: [error.middleware.ts](file:///c:/Users/SWEET%20HOME/.gemini/antigravity/scratch/backend-quan-ly-sinh-vien/src/middlewares/error.middleware.ts#L36-L44).
+
+### 12. Nêu ba bằng chứng để chứng minh nâng cấp Chương 08 không làm hỏng Chương 07.
+- **Bằng chứng 1 (Bảo toàn Auth & RBAC)**: Chạy test tự động xác nhận endpoint `/api/auth/login` cấp JWT bình thường, `/api/auth/profile` đọc đúng thông tin người dùng có bearer token, Student bị chặn 403 Forbidden khi cố gắng gọi `DELETE /api/v1/sinh-vien/:maSV`, trong khi Admin gọi DELETE thành công 200 OK.
+- **Bằng chứng 2 (Bảo toàn Multer Upload & File Tĩnh)**: Endpoint `/api/auth/me/avatar` vẫn tiếp tục nhận ảnh qua multipart/form-data, kiểm soát chặt dung lượng <= 2MB (chặn 413 nếu quá 2MB), xác thực Magic Bytes chống giả mạo đuôi file, lưu file vào `public/uploads/` và cập nhật trường `avatarUrl` trong CSDL.
+- **Bằng chứng 3 (Bảo toàn CRUD Sinh Viên & OpenAPI)**: Các API `GET /:maSV`, `POST`, `PUT`, `DELETE` giữ nguyên 100% URL, mã trạng thái và schema dữ liệu; file `docs/openapi.yaml` bổ sung các query params mới mà không làm mất bất kỳ định nghĩa endpoint nào của các chương trước.
+- **Vị trí code**: [test-buoi9-pagination-errors.ts](file:///c:/Users/SWEET%20HOME/.gemini/antigravity/scratch/backend-quan-ly-sinh-vien/src/scripts/test-buoi9-pagination-errors.ts#L335-L364).

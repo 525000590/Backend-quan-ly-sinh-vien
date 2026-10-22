@@ -1,0 +1,8 @@
+$kind: collection
+description: "Postman Collection kiểm thử 12 ca kiểm thử Upload (U01 - U12) cho Chương 07: Multer, Giới hạn 2MB, Kiểm tra chữ ký file, Phục vụ tĩnh và kết nối Frontend."
+variables:
+  baseUrl: http://localhost:5000
+  studentToken: ""
+  adminToken: ""
+  invalidToken: invalid_test_token_signature
+  uploadedAvatarUrl: ""

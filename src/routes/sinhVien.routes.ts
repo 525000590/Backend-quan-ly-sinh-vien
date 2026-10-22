@@ -6,18 +6,19 @@ import {
   capNhatSinhVien,
   xoaSinhVien,
 } from '../controllers/sinhVien.controller.js';
-import { validate } from '../middlewares/validate.middleware.js';
+import { validate, validateQuery } from '../middlewares/validate.middleware.js';
 import { isAuth } from '../middlewares/isAuth.js';
 import { isAdmin } from '../middlewares/isAdmin.js';
 import {
   createSinhVienSchema,
   updateSinhVienSchema,
 } from '../validations/sinhVien.schema.js';
+import { sinhVienQuerySchema } from '../validations/sinhVien.query.js';
 
 const router = Router();
 
-// GET /api/v1/sinh-vien -> Lấy danh sách sinh viên (Public)
-router.get('/', getDanhSachSinhVien);
+// GET /api/v1/sinh-vien -> Lấy danh sách sinh viên (Public, có phân trang & tìm kiếm)
+router.get('/', validateQuery(sinhVienQuerySchema), getDanhSachSinhVien);
 
 // GET /api/v1/sinh-vien/:maSV -> Tìm sinh viên theo mã (Public)
 router.get('/:maSV', getSinhVienTheoMa);

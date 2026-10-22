@@ -1,0 +1,23 @@
+$kind: http-request
+url: "{{baseUrl}}/api/auth/me/avatar"
+method: POST
+headers:
+  Authorization: Bearer {{studentToken}}
+body:
+  type: formdata
+  content:
+    - type: file
+      key: avatar
+      src:
+        - valid-avatar.png
+    - type: text
+      key: userId
+      value: "9999"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('U11 - Server xử lý an toàn không tin userId body (200 hoặc 400)', function () {
+          pm.expect([200, 400]).to.include(pm.response.code);
+      });
+    language: text/javascript
+order: 12000

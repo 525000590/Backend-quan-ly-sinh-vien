@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{baseUrl}}/api/auth/me/avatar"
+method: POST
+headers:
+  Authorization: Bearer {{studentToken}}
+body:
+  type: formdata
+  content:
+    - type: file
+      key: photo
+      src:
+        - valid-avatar.png
+scripts:
+  - type: afterResponse
+    code: pm.test('U06 - Sai field name trả về 400 Bad Request', function () { pm.response.to.have.status(400); });
+    language: text/javascript
+order: 7000

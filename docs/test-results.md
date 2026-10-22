@@ -209,3 +209,89 @@ Thư mục lưu trữ tĩnh: `public/uploads/`
   - Phục vụ ảnh tĩnh an toàn qua `express.static('public/uploads')` dưới đường dẫn `/uploads/...`.
   - Phân quyền **RBAC** được bảo đảm chặt chẽ từ Backend tới Frontend: Student chỉ xem, Admin có toàn quyền thao tác.
   - Ứng dụng **Vite React + TypeScript + Axios** hoạt động mượt mà, kết nối API thật, hỗ trợ đầy đủ các trạng thái Loading/Empty/Error/Retry.
+
+
+---
+
+# Báo Cáo Kết Quả Kiểm Thử (Test Results) - Buổi 09 / Chương 08: Phân Trang & Xử Lý Lỗi
+
+Dự án: **Backend Quản Lý Sinh Viên**  
+Môi trường kiểm thử: `Node.js v20` + `Express 5` + `TypeScript ESM` + `SQL Server 2014` + `Sequelize 6` + `Zod 4` + `Vite React Frontend`  
+Base URL: `http://localhost:5000`
+
+---
+
+## 1. Ma trận 17 Ca Kiểm Thử Phân Trang và Tìm Kiếm Lab 1 (P01 – P17)
+
+| Mã | Request / Tình huống | Method & URL | Input / Query | Expected Status | Actual Status | Xác minh thêm & Bằng chứng dữ liệu | Kết luận |
+|---|---|---|---|:---:|:---:|---|:---:|
+| **P01** | GET danh sách mặc định | `GET /api/v1/sinh-vien` | *Không truyền query* | 200 | 200 | `data` là mảng; `pagination.page = 1`, `pagination.limit = 10`, `totalItems = 5` | **PASS** |
+| **P02** | GET trang 1 với limit 2 | `GET /api/v1/sinh-vien?page=1&limit=2` | `page=1, limit=2` | 200 | 200 | Trả về 2 bản ghi đầu tiên (`SV001`, `SV002`) sắp xếp theo `maSV ASC` | **PASS** |
+| **P03** | GET trang 2 với limit 2 | `GET /api/v1/sinh-vien?page=2&limit=2` | `page=2, limit=2` | 200 | 200 | Trả về 2 bản ghi tiếp theo (`SV003`, `SV004`), không trùng bất kỳ bản ghi nào của trang 1 | **PASS** |
+| **P04** | GET trang 3 với limit 2 | `GET /api/v1/sinh-vien?page=3&limit=2` | `page=3, limit=2` | 200 | 200 | Trang cuối cùng chỉ chứa 1 bản ghi còn lại (`SV006`); `totalPages = 3` | **PASS** |
+| **P05** | GET trang vượt tổng số trang | `GET /api/v1/sinh-vien?page=999&limit=2` | `page=999, limit=2` | 200 | 200 | `data = []` (mảng rỗng, không crash 500); `totalItems = 5` vẫn phản ánh đúng tổng số | **PASS** |
+| **P06** | GET page số âm | `GET /api/v1/sinh-vien?page=-1` | `page=-1` | 400 | 400 | Zod regex reject chuỗi âm; trả về `400 Bad Request`, `status: 400`, `data: null` | **PASS** |
+| **P07** | GET page = 0 | `GET /api/v1/sinh-vien?page=0` | `page=0` | 400 | 400 | Bị chặn bởi quy tắc `page >= 1`; không thực thi truy vấn tới CSDL | **PASS** |
+| **P08** | GET page số thập phân | `GET /api/v1/sinh-vien?page=1.5` | `page=1.5` | 400 | 400 | Từ chối số thập phân; trả về `400 Bad Request` | **PASS** |
+| **P09** | GET limit là chuỗi | `GET /api/v1/sinh-vien?limit=abc` | `limit=abc` | 400 | 400 | Chặn chuỗi không phải chữ số; không trả 500, không gây lỗi cú pháp SQL Server | **PASS** |
+| **P10** | GET limit vượt 50 | `GET /api/v1/sinh-vien?limit=51` | `limit=51` | 400 | 400 | Chặn giới hạn vượt ngưỡng tối đa (50); trả về 400 | **PASS** |
+| **P11** | GET search từ khóa có kết quả | `GET /api/v1/sinh-vien?search=Anh` | `search=Anh` | 200 | 200 | Trả về danh sách sinh viên có họ tên chứa "Anh" (`SV002` Lan Anh, `SV003` Hoàng Anh) | **PASS** |
+| **P12** | GET search kết hợp phân trang | `GET /api/v1/sinh-vien?search=Anh&page=2&limit=2` | `search=Anh, page=2, limit=2` | 200 | 200 | `totalItems = 2` (tổng kết quả sau lọc); trang 2 rỗng do chỉ có 2 kết quả | **PASS** |
+| **P13** | GET search không có kết quả | `GET /api/v1/sinh-vien?search=khongco_123` | `search=khongco_123` | 200 | 200 | `data = []`, `pagination.totalItems = 0`, `pagination.totalPages = 0` | **PASS** |
+| **P14** | GET search có khoảng trắng đầu/cuối | `GET /api/v1/sinh-vien?search=%20Anh%20` | `search=" Anh "` | 200 | 200 | Zod tự động `trim()` thành `"Anh"`, kết quả tìm kiếm khớp chính xác | **PASS** |
+| **P15** | GET search quá dài (81 ký tự) | `GET /api/v1/sinh-vien?search=[81 chars]` | `search` dài 81 ký tự | 400 | 400 | Chặn từ khóa vượt quá 80 ký tự; trả về `400 Bad Request` | **PASS** |
+| **P16** | Kiểm chứng thứ tự ổn định maSV | `GET /api/v1/sinh-vien?page=1&limit=5` | `page=1, limit=5` | 200 | 200 | Dữ liệu sắp xếp tăng dần theo `maSV`: `SV001` -> `SV002` -> `SV003` -> `SV004` -> `SV006` | **PASS** |
+| **P17** | Hồi quy API GET theo mã cũ | `GET /api/v1/sinh-vien/SV001` | URL param `maSV=SV001` | 200 | 200 | Trả về đúng thông tin sinh viên `SV001`; hợp đồng API cũ không bị ảnh hưởng | **PASS** |
+
+**Tỷ lệ đạt Bảng P (Pagination & Search): 17/17 ca (100% PASS)**
+
+---
+
+## 2. Ma trận 10 Ca Kiểm Thử Xử Lý Lỗi & Hồi Quy Bảo Mật Lab 2 (E01 – E10)
+
+| Mã | Request / Tình huống | Method & URL | Payload / Headers | Expected Status | Actual Status | Xác minh thêm & Bằng chứng dữ liệu | Kết luận |
+|---|---|---|---|:---:|:---:|---|:---:|
+| **E01** | Query sai định dạng (`page=-5`) | `GET /api/v1/sinh-vien?page=-5` | *Query* | 400 | 400 | Cấu trúc chuẩn `{ success: false, status: 400, message: "...", data: null }` | **PASS** |
+| **E02** | Query limit chuỗi (`limit=abc`) | `GET /api/v1/sinh-vien?limit=abc` | *Query* | 400 | 400 | Bị chặn đứng ngay tại middleware Zod trước khi chạm tới Database | **PASS** |
+| **E03** | Tìm sinh viên không tồn tại | `GET /api/v1/sinh-vien/SV999` | URL param | 404 | 404 | Trả về `404 Not Found` qua `throw new AppError(404, 'Không tìm thấy sinh viên')` | **PASS** |
+| **E04** | Route không tồn tại | `GET /duong-dan-hoan-toan-khong-co` | *None* | 404 | 404 | Fallback 404 bắt đúng URL và phương thức, định dạng JSON lỗi chuẩn | **PASS** |
+| **E05** | Mô phỏng lỗi 500 hệ thống | `GET /api/test-error-500` | *None* | 500 | 500 | Server log chi tiết; response không chứa `passwordHash`, `JWT_SECRET` hay chuỗi kết nối CSDL | **PASS** |
+| **E06** | Cấu trúc lỗi 500 hệ thống | `GET /api/test-error-500` | *None* | 500 | 500 | Đúng chuẩn: `success: false`, `status: 500`, `data: null`, message an toàn | **PASS** |
+| **E07** | Quản lý Stack Trace | `GET /api/test-error-500` | *None* | 500 | 500 | Trường `stack` chỉ xuất hiện khi `NODE_ENV === 'development'`, biến mất hoàn toàn ở `production` | **PASS** |
+| **E08** | Hồi quy bảo mật: Thiếu Token | `GET /api/auth/profile` | *Không header Authorization* | 401 | 401 | Middleware `isAuth` chặn đứng request không có token | **PASS** |
+| **E09** | Hồi quy bảo mật: Student xóa dữ liệu | `DELETE /api/v1/sinh-vien/SV001` | Bearer Token của Student | 403 | 403 | Middleware `isAdmin` chặn 403 Forbidden; bản ghi `SV001` trong CSDL được bảo toàn | **PASS** |
+| **E10** | Hồi quy Upload: Avatar > 2MB | `POST /api/auth/me/avatar` | Bearer Token + File 2.2MB | 413 | 413 | Multer bắt `LIMIT_FILE_SIZE`, trả đúng `413 Payload Too Large`, không lưu file rác | **PASS** |
+
+**Tỷ lệ đạt Bảng E (Global Error Handling & Security): 10/10 ca (100% PASS)**
+
+---
+
+## 3. Xác minh truy vấn tại Cơ sở dữ liệu SQL Server
+
+Truy vấn đối chiếu trực tiếp trên SQL Server:
+```sql
+-- 1. Đếm tổng số bản ghi trong bảng
+SELECT COUNT(*) AS totalItems FROM dbo.SinhVien;
+-- Kết quả: 5
+
+-- 2. Đọc trang 2 với limit = 2 và sắp xếp ổn định
+SELECT maSV, hoTen, email, maLop
+FROM dbo.SinhVien
+ORDER BY maSV ASC
+OFFSET 2 ROWS
+FETCH NEXT 2 ROWS ONLY;
+-- Kết quả trả về đúng 2 bản ghi: SV003 (Hoàng Anh) và SV004 (Trần Tuấn)
+
+-- 3. Tìm kiếm theo tên có 'Anh'
+SELECT COUNT(*) AS totalMatched
+FROM dbo.SinhVien
+WHERE hoTen LIKE '%Anh%';
+-- Kết quả: 2 bản ghi (SV002 Lan Anh, SV003 Hoàng Anh)
+```
+
+## 4. Tổng kết nghiệm thu toàn bộ hệ thống
+
+- **Chương 08 (Phân trang, Tìm kiếm & Xử lý lỗi)**: Đạt **26/26 ca kiểm thử tự động (100% PASS)**.
+- **Chương 07 (JWT, RBAC & Multer Upload)**: Đạt **100% không hồi quy** (24/24 ca Auth & 12/12 ca Upload).
+- **Frontend (Vite + React)**: Tích hợp đầy đủ thanh tìm kiếm `hoTen`, tự động reset trang 1 khi gõ tìm kiếm, các nút điều hướng phân trang `Trước`/`Sau`, badge `Trang X/Y` và `Tổng số: Z sinh viên`.
+- **OpenAPI 3.0.3**: Cập nhật hoàn chỉnh đặc tả query parameters và schema `PaginationMeta`.

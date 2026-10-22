@@ -17,10 +17,19 @@ export interface SinhVien {
   maLop: string;
 }
 
+export interface PaginationMeta {
+  page: number;
+  limit: number;
+  totalItems: number;
+  totalPages: number;
+}
+
 export interface ApiResponse<T> {
   success: boolean;
+  status?: number;
   message: string;
   data: T;
+  pagination?: PaginationMeta;
   errors?: Array<{ field: string; message: string }>;
 }
 

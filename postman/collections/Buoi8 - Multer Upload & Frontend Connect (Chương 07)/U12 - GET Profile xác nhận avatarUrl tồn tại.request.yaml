@@ -1,0 +1,16 @@
+$kind: http-request
+url: "{{baseUrl}}/api/auth/profile"
+method: GET
+headers:
+  Authorization: Bearer {{studentToken}}
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('U12 - Status là 200 OK', function () { pm.response.to.have.status(200); });
+      const b = pm.response.json();
+      pm.test('U12 - Profile trả về đúng avatarUrl', function () {
+          pm.expect(b.data.avatarUrl).to.be.a('string');
+          pm.expect(b.data.passwordHash).to.be.undefined;
+      });
+    language: text/javascript
+order: 13000

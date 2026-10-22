@@ -1,0 +1,25 @@
+$kind: http-request
+url: "{{baseUrl}}/api/auth/me/avatar"
+method: POST
+headers:
+  Authorization: Bearer {{studentToken}}
+body:
+  type: formdata
+  content:
+    - type: file
+      key: avatar
+      src:
+        - valid-avatar.png
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('U01 - Status là 200 OK', function () { pm.response.to.have.status(200); });
+      const b = pm.response.json();
+      pm.test('U01 - Trả về avatarUrl hợp lệ', function () {
+          pm.expect(b.success).to.eql(true);
+          pm.expect(b.data.avatarUrl).to.be.a('string');
+          pm.expect(b.data.avatarUrl.startsWith('/uploads/')).to.be.true;
+          pm.collectionVariables.set('uploadedAvatarUrl', b.data.avatarUrl);
+      });
+    language: text/javascript
+order: 2000

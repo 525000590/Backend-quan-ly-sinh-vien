@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/api/auth/me/avatar"
+method: POST
+body:
+  type: formdata
+  content:
+    - type: file
+      key: avatar
+      src:
+        - valid-avatar.png
+scripts:
+  - type: afterResponse
+    code: pm.test('U03 - Không token trả về 401 Unauthorized', function () { pm.response.to.have.status(401); });
+    language: text/javascript
+order: 4000

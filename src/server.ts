@@ -87,10 +87,18 @@ app.use('/api/auth', authRoutes);
 // 8. Gắn các tuyến đường API sinh viên
 app.use('/api/v1/sinh-vien', sinhVienRoutes);
 
+// Route mô phỏng lỗi 500 (chỉ bật trong môi trường test/development, không mở trong production)
+if (process.env.NODE_ENV !== 'production') {
+  app.get('/api/test-error-500', () => {
+    throw new Error('Lỗi database mô phỏng: Connection lost');
+  });
+}
+
 // 9. Xử lý đường dẫn không tồn tại (404 Not Found)
 app.use((req, res) => {
   res.status(404).json({
     success: false,
+    status: 404,
     message: 'Không tìm thấy đường dẫn',
     data: null,
   });

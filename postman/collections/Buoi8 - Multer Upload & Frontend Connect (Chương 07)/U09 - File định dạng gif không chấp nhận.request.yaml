@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{baseUrl}}/api/auth/me/avatar"
+method: POST
+headers:
+  Authorization: Bearer {{studentToken}}
+body:
+  type: formdata
+  content:
+    - type: file
+      key: avatar
+      src:
+        - sample.gif
+scripts:
+  - type: afterResponse
+    code: pm.test('U09 - MIME không được phép trả về 400 Bad Request', function () { pm.response.to.have.status(400); });
+    language: text/javascript
+order: 10000

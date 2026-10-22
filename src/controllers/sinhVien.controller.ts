@@ -8,7 +8,7 @@ import {
 } from '../services/sinhVien.service.js';
 
 /**
- * Controller: Lấy danh sách toàn bộ sinh viên từ Database
+ * Controller: Lấy danh sách toàn bộ sinh viên từ Database (có phân trang và tìm kiếm)
  */
 export async function getDanhSachSinhVien(
   req: Request,
@@ -16,11 +16,13 @@ export async function getDanhSachSinhVien(
   next: NextFunction
 ): Promise<void> {
   try {
-    const data = await layDanhSachSinhVien();
+    const query = req.query as { page?: number; limit?: number; search?: string };
+    const { data, pagination } = await layDanhSachSinhVien(query);
     res.status(200).json({
       success: true,
       message: 'Lấy danh sách sinh viên thành công',
       data,
+      pagination,
     });
   } catch (error) {
     next(error);
@@ -38,15 +40,6 @@ export async function getSinhVienTheoMa(
   try {
     const maSV = String(req.params.maSV);
     const data = await timSinhVienTheoMa(maSV);
-
-    if (!data) {
-      res.status(404).json({
-        success: false,
-        message: 'Không tìm thấy sinh viên',
-        data: null,
-      });
-      return;
-    }
 
     res.status(200).json({
       success: true,

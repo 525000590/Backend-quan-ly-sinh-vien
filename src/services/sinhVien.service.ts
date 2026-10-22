@@ -1,35 +1,78 @@
-import { UniqueConstraintError, ForeignKeyConstraintError } from 'sequelize';
+import { Op, UniqueConstraintError, ForeignKeyConstraintError } from 'sequelize';
 import type { ISinhVienDTO } from '../dtos/sinhVien.dto.js';
 import { SinhVien } from '../models/SinhVien.js';
 import { Lop } from '../models/Lop.js';
 import { AppError } from '../utils/AppError.js';
 
+export interface PaginationMeta {
+  page: number;
+  limit: number;
+  totalItems: number;
+  totalPages: number;
+}
+
+export interface PaginatedSinhVienResult {
+  data: ISinhVienDTO[];
+  pagination: PaginationMeta;
+}
+
 /**
- * Lấy toàn bộ danh sách sinh viên từ CSDL SQL Server, sắp xếp theo maSV tăng dần
+ * Lấy danh sách sinh viên từ CSDL SQL Server có hỗ trợ tìm kiếm theo họ tên (hoTen) và phân trang
+ * Luôn sắp xếp ổn định theo maSV tăng dần trước khi phân trang
  */
-export async function layDanhSachSinhVien(): Promise<ISinhVienDTO[]> {
-  const danhSach = await SinhVien.findAll({
+export async function layDanhSachSinhVien(params?: {
+  page?: number;
+  limit?: number;
+  search?: string;
+}): Promise<PaginatedSinhVienResult> {
+  const page = Math.max(1, params?.page ?? 1);
+  const limit = Math.max(1, Math.min(50, params?.limit ?? 10));
+  const search = params?.search ? params.search.trim() : '';
+  const offset = (page - 1) * limit;
+
+  const where: any = {};
+  if (search.length > 0) {
+    where.hoTen = {
+      [Op.like]: `%${search}%`,
+    };
+  }
+
+  // Sử dụng findAndCountAll của Sequelize để thực hiện đếm và phân trang trực tiếp ở SQL Server
+  const { rows, count } = await SinhVien.findAndCountAll({
+    where,
+    limit,
+    offset,
     order: [['maSV', 'ASC']],
   });
 
-  return danhSach.map((sv) => ({
-    maSV: sv.maSV,
-    hoTen: sv.hoTen,
-    email: sv.email,
-    maLop: sv.maLop,
-  }));
+  const totalPages = count === 0 ? 0 : Math.ceil(count / limit);
+
+  return {
+    data: rows.map((sv) => ({
+      maSV: sv.maSV,
+      hoTen: sv.hoTen,
+      email: sv.email,
+      maLop: sv.maLop,
+    })),
+    pagination: {
+      page,
+      limit,
+      totalItems: count,
+      totalPages,
+    },
+  };
 }
 
 /**
  * Tìm sinh viên theo mã sinh viên (maSV)
- * Trả về ISinhVienDTO nếu tìm thấy, hoặc undefined nếu không có
+ * Ném AppError(404) nếu không tìm thấy để Global Error Middleware xử lý
  */
 export async function timSinhVienTheoMa(
   maSV: string
-): Promise<ISinhVienDTO | undefined> {
+): Promise<ISinhVienDTO> {
   const sinhVien = await SinhVien.findByPk(maSV);
   if (!sinhVien) {
-    return undefined;
+    throw new AppError(404, 'Không tìm thấy sinh viên');
   }
 
   return {

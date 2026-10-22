@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{baseUrl}}/api/auth/me/avatar"
+method: POST
+headers:
+  Authorization: Bearer {{studentToken}}
+body:
+  type: formdata
+  content:
+    - type: file
+      key: avatar
+      src:
+        - large-2.2mb.jpg
+scripts:
+  - type: afterResponse
+    code: pm.test('U07 - File quá 2MB trả về 413 Payload Too Large', function () { pm.response.to.have.status(413); });
+    language: text/javascript
+order: 8000

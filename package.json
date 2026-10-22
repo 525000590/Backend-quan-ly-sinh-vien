@@ -13,7 +13,8 @@
     "test:validation": "tsx src/scripts/run-all-tests.ts",
     "seed:admin": "tsx src/scripts/seed-admin.ts",
     "test:auth": "tsx src/scripts/test-buoi7-auth.ts",
-    "test:upload": "tsx src/scripts/test-buoi8-upload.ts"
+    "test:upload": "tsx src/scripts/test-buoi8-upload.ts",
+    "test:pagination": "tsx src/scripts/test-buoi9-pagination-errors.ts"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

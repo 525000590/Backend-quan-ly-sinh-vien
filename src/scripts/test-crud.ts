@@ -13,15 +13,19 @@ async function main(): Promise<void> {
     console.log('--- TEST CRUD TỰ ĐỘNG ---');
 
     // 1. Dọn dẹp SV003 nếu có
-    const svCu = await timSinhVienTheoMa('SV003');
-    if (svCu) {
-      await xoaSinhVien('SV003');
-      console.log('Đã dọn dẹp SV003 cũ.');
+    try {
+      const svCu = await timSinhVienTheoMa('SV003');
+      if (svCu) {
+        await xoaSinhVien('SV003');
+        console.log('Đã dọn dẹp SV003 cũ.');
+      }
+    } catch {
+      // Bỏ qua nếu SV003 không tồn tại
     }
 
     // 2. Test T01: GET list
-    const list = await layDanhSachSinhVien();
-    console.log('T01 PASS - Danh sách:', list.length, 'sinh viên.');
+    const result = await layDanhSachSinhVien();
+    console.log('T01 PASS - Danh sách:', result.data.length, 'sinh viên. Tổng:', result.pagination.totalItems);
 
     // 3. Test T02: POST SV003
     const svMoi = await themSinhVien({

@@ -1,0 +1,9 @@
+$kind: http-request
+name: U02 - Mở file tĩnh Avatar qua trình duyệt / GET
+url: "{{baseUrl}}/{{uploadedAvatarUrl}}"
+method: GET
+scripts:
+  - type: afterResponse
+    code: pm.test('U02 - File ảnh tĩnh trả lời 200 OK', function () { pm.response.to.have.status(200); });
+    language: text/javascript
+order: 3000

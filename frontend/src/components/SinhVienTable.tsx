@@ -1,6 +1,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
-import { apiClient, type SinhVien, type ApiResponse, type UserProfile } from '../api/client';
+import {
+  apiClient,
+  type SinhVien,
+  type ApiResponse,
+  type UserProfile,
+  type PaginationMeta,
+} from '../api/client';
 
 interface SinhVienTableProps {
   token: string | null;
@@ -9,6 +15,16 @@ interface SinhVienTableProps {
 
 export const SinhVienTable: React.FC<SinhVienTableProps> = ({ token, profile }) => {
   const [sinhViens, setSinhViens] = useState<SinhVien[]>([]);
+  const [page, setPage] = useState<number>(1);
+  const [limit] = useState<number>(5);
+  const [search, setSearch] = useState<string>('');
+  const [pagination, setPagination] = useState<PaginationMeta>({
+    page: 1,
+    limit: 5,
+    totalItems: 0,
+    totalPages: 0,
+  });
+
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -18,10 +34,20 @@ export const SinhVienTable: React.FC<SinhVienTableProps> = ({ token, profile }) 
     setLoading(true);
     setError(null);
     try {
-      const response = await apiClient.get<ApiResponse<SinhVien[]>>('/api/v1/sinh-vien');
-      // Đọc mảng chính xác tại response.data.data theo hợp đồng
+      const response = await apiClient.get<ApiResponse<SinhVien[]>>('/api/v1/sinh-vien', {
+        params: {
+          page,
+          limit,
+          search: search.trim() ? search.trim() : undefined,
+        },
+      });
+
+      // Đọc mảng chính xác tại response.data.data và metadata tại response.data.pagination
       if (response.data && Array.isArray(response.data.data)) {
         setSinhViens(response.data.data);
+        if (response.data.pagination) {
+          setPagination(response.data.pagination);
+        }
       } else {
         setError('Phản hồi từ máy chủ không đúng định dạng mảng dữ liệu.');
       }
@@ -38,11 +64,28 @@ export const SinhVienTable: React.FC<SinhVienTableProps> = ({ token, profile }) 
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page, limit, search]);
 
   useEffect(() => {
     fetchSinhViens();
   }, [fetchSinhViens]);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearch(e.target.value);
+    setPage(1); // Quy tắc: khi đổi từ khóa tìm kiếm, luôn quay về trang 1
+  };
+
+  const handlePrevPage = () => {
+    if (page > 1) {
+      setPage((prev) => prev - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (page < pagination.totalPages) {
+      setPage((prev) => prev + 1);
+    }
+  };
 
   const handleDelete = async (maSV: string) => {
     const confirmDelete = window.confirm(`Bạn có chắc chắn muốn xóa sinh viên có mã "${maSV}" không?`);
@@ -114,6 +157,33 @@ export const SinhVienTable: React.FC<SinhVienTableProps> = ({ token, profile }) 
         </button>
       </div>
 
+      {/* Thanh công cụ tìm kiếm và thông tin tổng số */}
+      <div className="table-toolbar">
+        <div className="search-box">
+          <input
+            type="text"
+            className="input-control"
+            placeholder="🔍 Tìm kiếm theo họ tên (hoTen)..."
+            value={search}
+            onChange={handleSearchChange}
+          />
+          {search && (
+            <button
+              className="btn btn-link btn-clear-search"
+              onClick={() => {
+                setSearch('');
+                setPage(1);
+              }}
+            >
+              ✕
+            </button>
+          )}
+        </div>
+        <div className="total-badge">
+          Tổng số: <strong>{pagination.totalItems}</strong> sinh viên
+        </div>
+      </div>
+
       {actionMessage && (
         <div className={`alert alert-${actionMessage.type}`}>
           {actionMessage.type === 'success' ? '✓' : '⚠️'} {actionMessage.text}
@@ -123,7 +193,7 @@ export const SinhVienTable: React.FC<SinhVienTableProps> = ({ token, profile }) 
       {loading && (
         <div className="state-box">
           <div className="spinner"></div>
-          <p>Đang tải danh sách sinh viên từ CSDL...</p>
+          <p>Đang tải dữ liệu phân trang từ SQL Server...</p>
         </div>
       )}
 
@@ -138,45 +208,70 @@ export const SinhVienTable: React.FC<SinhVienTableProps> = ({ token, profile }) 
 
       {!loading && !error && sinhViens.length === 0 && (
         <div className="state-box">
-          <p className="empty-text">Hiện tại danh sách sinh viên đang trống.</p>
+          <p className="empty-text">
+            {search ? `Không tìm thấy sinh viên nào phù hợp với từ khóa "${search}".` : 'Hiện tại danh sách sinh viên đang trống.'}
+          </p>
         </div>
       )}
 
       {!loading && !error && sinhViens.length > 0 && (
-        <div className="table-responsive">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Mã SV</th>
-                <th>Họ và Tên</th>
-                <th>Email</th>
-                <th>Mã Lớp</th>
-                {isAdmin && <th>Thao tác (Admin)</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {sinhViens.map((sv) => (
-                <tr key={sv.maSV}>
-                  <td><strong>{sv.maSV}</strong></td>
-                  <td>{sv.hoTen}</td>
-                  <td>{sv.email}</td>
-                  <td><span className="badge">{sv.maLop}</span></td>
-                  {isAdmin && (
-                    <td>
-                      <button
-                        className="btn btn-danger btn-sm"
-                        onClick={() => handleDelete(sv.maSV)}
-                        disabled={deletingMaSV === sv.maSV}
-                      >
-                        {deletingMaSV === sv.maSV ? 'Đang xóa...' : '🗑️ Xóa'}
-                      </button>
-                    </td>
-                  )}
+        <>
+          <div className="table-responsive">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Mã SV</th>
+                  <th>Họ và Tên</th>
+                  <th>Email</th>
+                  <th>Mã Lớp</th>
+                  {isAdmin && <th>Thao tác (Admin)</th>}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {sinhViens.map((sv) => (
+                  <tr key={sv.maSV}>
+                    <td><strong>{sv.maSV}</strong></td>
+                    <td>{sv.hoTen}</td>
+                    <td>{sv.email}</td>
+                    <td><span className="badge">{sv.maLop}</span></td>
+                    {isAdmin && (
+                      <td>
+                        <button
+                          className="btn btn-danger btn-sm"
+                          onClick={() => handleDelete(sv.maSV)}
+                          disabled={deletingMaSV === sv.maSV}
+                        >
+                          {deletingMaSV === sv.maSV ? 'Đang xóa...' : '🗑️ Xóa'}
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Thanh điều hướng phân trang (Pagination Bar) */}
+          <div className="pagination-bar">
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={handlePrevPage}
+              disabled={page <= 1 || loading}
+            >
+              ⬅ Trước
+            </button>
+            <span className="pagination-info">
+              Trang <strong>{page}</strong> / <strong>{pagination.totalPages || 1}</strong>
+            </span>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={handleNextPage}
+              disabled={page >= pagination.totalPages || pagination.totalPages === 0 || loading}
+            >
+              Sau ➡
+            </button>
+          </div>
+        </>
       )}
     </div>
   );
