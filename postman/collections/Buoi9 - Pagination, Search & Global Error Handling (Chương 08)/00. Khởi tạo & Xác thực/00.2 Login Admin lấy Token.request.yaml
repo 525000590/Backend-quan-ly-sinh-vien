@@ -1,0 +1,22 @@
+$kind: http-request
+url: "{{baseUrl}}/api/auth/login"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "email": "admin@example.com",
+      "password": "Admin@123"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Login Admin thành công 200', function () {
+        pm.response.to.have.status(200);
+      });
+      const res = pm.response.json();
+      pm.collectionVariables.set('adminToken', res.data.accessToken);
+    language: text/javascript
+order: 2000

@@ -1,0 +1,16 @@
+$kind: http-request
+name: P10 - GET ?limit=51 (Chặn limit vượt 50)
+url: "{{baseUrl}}/api/v1/sinh-vien?limit=51"
+method: GET
+queryParams:
+  limit: "51"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Chặn limit=51 trả về 400 Bad Request', function () {
+        pm.response.to.have.status(400);
+        const json = pm.response.json();
+        pm.expect(json.success).to.be.false;
+      });
+    language: text/javascript
+order: 10000

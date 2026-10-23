@@ -8,6 +8,7 @@ import {
 import { validate } from '../middlewares/validate.middleware.js';
 import { isAuth } from '../middlewares/isAuth.js';
 import { upload } from '../middlewares/upload.middleware.js';
+import { loginLimiter } from '../middlewares/rate-limit.middleware.js';
 import { registerSchema, loginSchema } from '../validations/auth.schema.js';
 
 const router = Router();
@@ -15,8 +16,8 @@ const router = Router();
 // POST /api/auth/register -> Đăng ký tài khoản (Public)
 router.post('/register', validate(registerSchema), registerController);
 
-// POST /api/auth/login -> Đăng nhập nhận JWT Token (Public)
-router.post('/login', validate(loginSchema), loginController);
+// POST /api/auth/login -> Đăng nhập nhận JWT Token (Public, có Rate Limiter 5 req/60s)
+router.post('/login', loginLimiter, validate(loginSchema), loginController);
 
 // GET /api/auth/profile -> Xem hồ sơ cá nhân (Cần Bearer Token)
 router.get('/profile', isAuth, profileController);

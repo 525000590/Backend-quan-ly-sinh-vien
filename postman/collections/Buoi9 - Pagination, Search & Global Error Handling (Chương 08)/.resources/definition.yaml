@@ -1,0 +1,6 @@
+$kind: collection
+description: Postman Collection kiểm thử đầy đủ 17 ca phân trang & tìm kiếm (P01 - P17) và 10 ca xử lý lỗi tập trung & hồi quy bảo mật (E01 - E10) theo yêu cầu Chương 08.
+variables:
+  baseUrl: http://localhost:5000
+  studentToken: ""
+  adminToken: ""

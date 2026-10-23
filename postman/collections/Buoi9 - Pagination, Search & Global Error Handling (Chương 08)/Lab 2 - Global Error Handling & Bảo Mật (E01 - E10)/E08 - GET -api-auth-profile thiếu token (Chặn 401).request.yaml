@@ -1,0 +1,14 @@
+$kind: http-request
+name: E08 - GET /api/auth/profile thiếu token (Chặn 401)
+url: "{{baseUrl}}/api/auth/profile"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Chặn truy cập trái phép 401 Unauthorized', function () {
+        pm.response.to.have.status(401);
+        const json = pm.response.json();
+        pm.expect(json.success).to.be.false;
+      });
+    language: text/javascript
+order: 8000

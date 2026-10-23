@@ -1,0 +1,19 @@
+$kind: http-request
+name: P02 - GET ?page=1&limit=2 (2 bản ghi đầu theo maSV)
+url: "{{baseUrl}}/api/v1/sinh-vien?page=1&limit=2"
+method: GET
+queryParams:
+  page: "1"
+  limit: "2"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code 200', function () { pm.response.to.have.status(200); });
+      const json = pm.response.json();
+      pm.test('Lấy tối đa 2 bản ghi trang 1', function () {
+        pm.expect(json.data.length).to.be.at.most(2);
+        pm.expect(json.pagination.page).to.eql(1);
+        pm.expect(json.pagination.limit).to.eql(2);
+      });
+    language: text/javascript
+order: 2000

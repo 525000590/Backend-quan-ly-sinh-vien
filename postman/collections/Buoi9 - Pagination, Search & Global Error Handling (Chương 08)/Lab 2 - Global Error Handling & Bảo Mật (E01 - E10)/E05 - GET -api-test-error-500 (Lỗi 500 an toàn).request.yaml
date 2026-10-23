@@ -1,0 +1,15 @@
+$kind: http-request
+name: E05 - GET /api/test-error-500 (Lỗi 500 an toàn)
+url: "{{baseUrl}}/api/test-error-500"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code 500', function () { pm.response.to.have.status(500); });
+      const raw = pm.response.text();
+      pm.test('Không lộ mật khẩu hay thông tin nhạy cảm', function () {
+        pm.expect(raw).to.not.include('passwordHash');
+        pm.expect(raw).to.not.include('JWT_SECRET');
+      });
+    language: text/javascript
+order: 5000

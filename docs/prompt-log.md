@@ -638,3 +638,80 @@ export const authorize = (allowedRoles: string[]) => {
 - **Bằng chứng 2 (Bảo toàn Multer Upload & File Tĩnh)**: Endpoint `/api/auth/me/avatar` vẫn tiếp tục nhận ảnh qua multipart/form-data, kiểm soát chặt dung lượng <= 2MB (chặn 413 nếu quá 2MB), xác thực Magic Bytes chống giả mạo đuôi file, lưu file vào `public/uploads/` và cập nhật trường `avatarUrl` trong CSDL.
 - **Bằng chứng 3 (Bảo toàn CRUD Sinh Viên & OpenAPI)**: Các API `GET /:maSV`, `POST`, `PUT`, `DELETE` giữ nguyên 100% URL, mã trạng thái và schema dữ liệu; file `docs/openapi.yaml` bổ sung các query params mới mà không làm mất bất kỳ định nghĩa endpoint nào của các chương trước.
 - **Vị trí code**: [test-buoi9-pagination-errors.ts](file:///c:/Users/SWEET%20HOME/.gemini/antigravity/scratch/backend-quan-ly-sinh-vien/src/scripts/test-buoi9-pagination-errors.ts#L335-L364).
+
+
+---
+
+# Prompt Log - Buổi 12–14 / Chương 09: Kiểm Thử, Bảo Mật & Triển Khai Hệ Thống Backend
+
+## 1. Bối cảnh dự án
+- **Dự án**: `backend-quan-ly-sinh-vien` (Node.js v20+, Express 5, TypeScript ESM/NodeNext, Sequelize 6, SQL Server 2014, Docker & Compose, Vite React Frontend).
+- **Mục tiêu**:
+  - **Buổi 12 (Automated Testing)**: Cấu hình Jest, ts-jest, Supertest tương thích với chuẩn module ESM/NodeNext. Viết bộ 5 Unit Test (T01–T05) cho luồng Đăng nhập với Mock độc lập không phụ thuộc CSDL, bộ 7 API Test (A01–A07) với Supertest kiểm tra hành vi HTTP và cấp phát JWT.
+  - **Buổi 13 (API Security & SQL Optimization)**: Cài đặt và cấu hình Helmet bảo vệ HTTP response headers, gắn `express-rate-limit` (5 requests / 60s) cho `POST /api/auth/login`. Rà soát an toàn thông tin (Security Review) theo chuẩn OWASP Top 10 và lập báo cáo `docs/security-report.md`. Phân tích kế hoạch thực thi và đo lường tài nguyên SQL Server (`SET STATISTICS IO/TIME ON`) lập báo cáo `docs/sql-optimization.md`.
+  - **Buổi 14 (Dockerization & Local Deployment)**: Xây dựng `Dockerfile` đa tầng (multi-stage) tối ưu dung lượng, cấu hình `.dockerignore`, viết `compose.yaml` tích hợp cả Backend và SQL Server 2022 với Named Volumes bảo toàn dữ liệu và healthcheck, lập báo cáo triển khai `docs/deployment-report.md`.
+
+---
+
+## 2. Nhật ký Prompt theo khung CTCO (Context - Task - Constraint - Output)
+
+### Prompt 0: Khảo sát, chưa viết code
+- **Context**: Project `backend-quan-ly-sinh-vien` sau Chương 08: Express 5, TS, pnpm, Sequelize 6, SQL Server, JWT, React.
+- **Task**: Đọc file đã cung cấp; định vị Login, app/listen, Database, Global Error Handler, script build/run.
+- **Constraint**: Không tạo project mới; không tự sửa code; không đọc .env; không giả định file chưa được gửi.
+- **Output**: Bảng file – nhiệm vụ – giữ/sửa – lý do và kế hoạch bổ sung Jest, Helmet, Rate Limit, Docker.
+- **Đánh giá thực hiện**: Xác định cần tách `app` (`src/app.ts`) khỏi `app.listen` (`src/server.ts`) để Supertest kiểm thử HTTP mà không làm xung đột cổng 5000.
+
+### Prompt 1: Cấu hình Jest + ESM
+- **Context**: Project dùng pnpm, Express 5, TypeScript, type: module, ESM/NodeNext; tôi gửi `package.json` và `tsconfig.json`.
+- **Task**: Cài Jest, ts-jest, Supertest; tạo cấu hình kiểm thử phù hợp ESM và hướng dẫn chạy trên Windows.
+- **Constraint**: Không đổi sang CommonJS, không thay TS bằng JS, không sửa nghiệp vụ hay các script đang chạy.
+- **Output**: Lệnh cài đặt, file cấu hình `jest.config.mjs`, `tsconfig.spec.json`, file smoke test `tests/smoke.test.ts` và script test trong `package.json`.
+- **Phản biện & Khắc phục lỗi**:
+  - *Lỗi gặp phải*: `Unable to process ... please make sure outDir in tsconfig is neither '' or '.'` do thư mục `tests/` nằm ngoài `rootDir: "./src"`.
+  - *Giải pháp*: Tạo `tsconfig.spec.json` kế thừa `tsconfig.json` với `"rootDir": "."` và trỏ `jest.config.mjs` vào `tsconfig.spec.json`. Lệnh `node --experimental-vm-modules node_modules/jest/bin/jest.js` chạy hoàn hảo trên Windows.
+
+### Prompt 2: Viết 5 Unit Test cho Login (T01 - T05)
+- **Context**: Code Service/Controller Login, interface và nơi tạo JWT thực tế đã cung cấp trong `src/services/auth.service.ts`.
+- **Task**: Viết ít nhất T01–T05 bằng Jest, Mock phụ thuộc thích hợp; giải thích logic mỗi test theo mô hình AAA (Arrange - Act - Assert).
+- **Constraint**: Không kết nối Database thật; không ghi JWT_SECRET thật; không thay chức năng Login; giữ TypeScript/ESM.
+- **Output**: File `tests/unit/login.test.ts` đầy đủ, mock `User.findOne` và `bcrypt.compare`.
+- **Phản biện & Khắc phục lỗi**:
+  - *Lỗi gặp phải*: `ReferenceError: jest is not defined` và `Cannot assign to read only property 'generateToken' of object '[object Module]'` khi mock namespace ESM.
+  - *Giải pháp*: Import tường minh `import { jest, describe, test, expect, beforeEach } from '@jest/globals'`. Đối với logic Login, mock tĩnh `User.findOne` và `bcrypt.compare` trên class/object, không ghi đè module namespace sealed.
+
+### Prompt 3: Supertest kiểm tra API Login (A01 - A07)
+- **Context**: Express 5 có `/api/auth/login`, JWT, middleware và Global Error Handler từ Chương 08.
+- **Task**: Tạo API Test với Supertest kiểm tra A01–A07, status code, JSON và hành vi cấp Token.
+- **Constraint**: Không dùng tài khoản thật; không tự gọi listen; giữ hợp đồng API; cô lập DB phù hợp.
+- **Output**: File `tests/api/auth.api.test.ts` kiểm thử toàn bộ vòng đời HTTP request từ route đến middleware và controller.
+
+### Prompt 4: Helmet + Rate Limit Login (S01 - S07)
+- **Context**: Project Express 5, TypeScript, JWT, Swagger YAML, Global Error Handler; đã gửi app/routes hiện tại.
+- **Task**: Bổ sung Helmet toàn ứng dụng và limiter riêng cho `POST /api/auth/login`: tối đa 5 yêu cầu/60 giây, yêu cầu vượt giới hạn trả 429.
+- **Constraint**: Không xóa JWT; không sửa Controller nếu không cần; không ảnh hưởng endpoint khác; giữ response lỗi chuẩn `{success: false, status: 429, message: "...", data: null}`.
+- **Output**: File `src/middlewares/rate-limit.middleware.ts`, tích hợp vào `src/routes/auth.routes.ts`, kích hoạt `helmet()` trong `src/app.ts`, và script kiểm thử `src/scripts/test-buoi10-security.ts`.
+
+### Prompt 5: Security Code Review có định hướng
+- **Context**: Controller, Service, Route và cấu hình Express của dự án Quản lý sinh viên đã loại bỏ secret.
+- **Task**: Kiểm tra SQL Injection, XSS, secret/log, Authentication/Authorization và thứ tự Middleware theo OWASP Top 10.
+- **Constraint**: Chỉ dựa trên code được cung cấp; không tự khẳng định có lỗ hổng; không tắt JWT/Zod; không sửa schema tùy tiện.
+- **Output**: Tài liệu báo cáo `docs/security-report.md` theo cấu trúc 5 phần chuẩn giáo trình.
+
+### Prompt 6: Phân tích và tối ưu truy vấn bằng AI
+- **Context**: Dùng SQL Server, Sequelize 6. Schema `dbo.SinhVien`, SQL thật, số bản ghi và số đo SSMS.
+- **Task**: Phân tích điểm nghẽn, đề xuất tối ưu nhưng phải giữ data và thứ tự kết quả.
+- **Constraint**: Không tạo bảng/cột không có; không tự thêm Index; không thay dữ liệu thật; không ghép input vào Raw SQL.
+- **Output**: File `docs/sql-optimization.md` đối chiếu chỉ số Logical Reads, CPU Time, Elapsed Time giữa phiên bản gốc và đề xuất, phân tích Clustered Index Scan khi tìm kiếm `LIKE '%Anh%'`.
+
+### Prompt 7: Dockerfile cho project hiện tại
+- **Context**: Project Express 5, TS, pnpm, ESM, SQL Server; đã gửi package.json, tsconfig và file khởi động.
+- **Task**: Tạo Dockerfile multi-stage, `.dockerignore`, biên dịch TS và chạy entrypoint có thật.
+- **Constraint**: Giữ pnpm/ESM; không copy secret/.env; không đoán dist/index.js (dùng `dist/server.js`); không thay nghiệp vụ.
+- **Output**: File `Dockerfile` (build stage và runtime stage) và `.dockerignore`.
+
+### Prompt 8: Compose Backend + SQL Server
+- **Context**: Dockerfile Backend đã build. Sequelize kết nối SQL Server; DB học tập là `QuanLySinhVienDB`.
+- **Task**: Viết Compose gồm backend + sqlserver, network, environment, named volumes, healthcheck thực thi được và hướng dẫn seed/restore.
+- **Constraint**: Không hardcode secret; không dùng localhost giữa container; không tự tạo schema khác; bảo toàn uploads.
+- **Output**: File `compose.yaml`, `.env.example`, tài liệu kiểm chứng `docs/deployment-report.md`.

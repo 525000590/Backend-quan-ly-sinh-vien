@@ -1,0 +1,11 @@
+node_modules
+.git
+.env
+.env.*
+!.env.example
+dist
+coverage
+*.log
+Dockerfile*
+compose*.yaml
+frontend/node_modules

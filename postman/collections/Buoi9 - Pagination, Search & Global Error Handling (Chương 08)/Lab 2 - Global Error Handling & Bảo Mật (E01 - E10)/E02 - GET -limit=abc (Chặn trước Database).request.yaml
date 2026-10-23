@@ -1,0 +1,16 @@
+$kind: http-request
+name: E02 - GET ?limit=abc (Chặn trước Database)
+url: "{{baseUrl}}/api/v1/sinh-vien?limit=abc"
+method: GET
+queryParams:
+  limit: abc
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Chặn limit=abc bằng Zod trước Database trả về 400', function () {
+        pm.response.to.have.status(400);
+        const json = pm.response.json();
+        pm.expect(json.success).to.be.false;
+      });
+    language: text/javascript
+order: 2000

@@ -295,3 +295,107 @@ WHERE hoTen LIKE '%Anh%';
 - **Chương 07 (JWT, RBAC & Multer Upload)**: Đạt **100% không hồi quy** (24/24 ca Auth & 12/12 ca Upload).
 - **Frontend (Vite + React)**: Tích hợp đầy đủ thanh tìm kiếm `hoTen`, tự động reset trang 1 khi gõ tìm kiếm, các nút điều hướng phân trang `Trước`/`Sau`, badge `Trang X/Y` và `Tổng số: Z sinh viên`.
 - **OpenAPI 3.0.3**: Cập nhật hoàn chỉnh đặc tả query parameters và schema `PaginationMeta`.
+
+
+---
+
+# Báo Cáo Kết Quả Kiểm Thử (Test Results) - Buổi 12–14 / Chương 09: Kiểm Thử, Bảo Mật & Triển Khai Backend
+
+Dự án: **Backend Quản Lý Sinh Viên**  
+Môi trường kiểm thử: `Node.js v22` + `Express 5` + `TypeScript ESM` + `SQL Server 2014` + `Sequelize 6` + `Jest 30` + `Supertest 7` + `Helmet 8` + `Express Rate Limit 8`  
+Base URL: `http://localhost:5000`
+
+---
+
+## 1. Ma trận Unit Testing Logic Đăng Nhập (T01 – T05)
+
+*Lệnh chạy*: `pnpm test tests/unit/login.test.ts` (Sử dụng Mock độc lập, không kết nối Database)
+
+| Mã | Tình huống kiểm thử | Đối tượng Mock & Đầu vào | Expected Result | Actual Result | Trạng thái |
+|:---:|---|---|---|---|:---:|
+| **T01** | Tài khoản có, mật khẩu đúng | `User.findOne` trả về user giả lập, `bcrypt.compare` trả về `true` | Xác thực thành công, cấp Access Token `{ accessToken, tokenType: "Bearer", expiresIn: 3600 }` | Token được sinh ra, đúng thời hạn 3600s, đúng format Bearer | **PASS** |
+| **T02** | Tài khoản có, mật khẩu sai | `User.findOne` trả về user, `bcrypt.compare` trả về `false` | Từ chối, ném `AppError(401)`, không gọi hàm cấp Token | Ném `AppError(401, 'Email hoặc mật khẩu không chính xác')`, không cấp JWT | **PASS** |
+| **T03** | Tài khoản không tồn tại | `User.findOne` trả về `null` | Từ chối, ném `AppError(401)`, không gọi `bcrypt.compare` | Ném `AppError(401)`, `bcrypt.compare` không bị gọi | **PASS** |
+| **T04** | Thiếu email hoặc password | Dữ liệu thiếu password hoặc sai email format | `loginSchema.safeParse` trả về `success: false` | Bị Zod schema từ chối với lỗi validation chi tiết | **PASS** |
+| **T05** | Lỗi kết nối CSDL đột ngột | `User.findOne` throw `Error('Database connection failed')` | Ngoại lệ được đẩy lên Error Handler an toàn, không sinh Token | Bắt được đúng lỗi hệ thống, không cấp JWT | **PASS** |
+
+**Kết quả Unit Testing: 5/5 ca PASS (100%)**
+
+---
+
+## 2. Ma trận API Testing với Supertest (A01 – A07)
+
+*Lệnh chạy*: `pnpm test tests/api/auth.api.test.ts`
+
+| Mã | Tình huống kiểm thử | Method & Endpoint | Payload / Header | Expected HTTP & Body | Actual HTTP & Body | Trạng thái |
+|:---:|---|---|---|---|---|:---:|
+| **A01** | Đăng nhập hợp lệ | `POST /api/auth/login` | Body email/password đúng | 200, `data.accessToken` tồn tại | HTTP 200, nhận đủ JWT và tokenType | **PASS** |
+| **A02** | Sai mật khẩu | `POST /api/auth/login` | Mật khẩu sai | 401, `success: false`, không có token | HTTP 401, `data: null`, `accessToken: undefined` | **PASS** |
+| **A03** | User không tồn tại | `POST /api/auth/login` | Email lạ chưa đăng ký | 401, `success: false`, `data: null` | HTTP 401, message chuẩn an toàn | **PASS** |
+| **A04** | Thiếu trường bắt buộc | `POST /api/auth/login` | Body thiếu password | 400, `success: false`, lỗi validation | HTTP 400, báo lỗi trường thiếu | **PASS** |
+| **A05** | Profile thiếu Token | `GET /api/auth/profile` | Không có header Authorization | 401, `status: 401`, `data: null` | HTTP 401 Unauthorized, chặn truy cập | **PASS** |
+| **A06** | Profile có JWT hợp lệ | `GET /api/auth/profile` | Header `Bearer <token>` | 200, trả thông tin cá nhân hợp lệ | HTTP 200, trả `id, fullName, email, role` (không có password) | **PASS** |
+| **A07** | Lỗi hệ thống 500 | `GET /api/test-error-500` | *None* | 500, không lộ SQL hay JWT_SECRET | HTTP 500, dữ liệu nhạy cảm được che giấu | **PASS** |
+
+**Kết quả API Testing: 7/7 ca PASS (100%)**
+
+---
+
+## 3. Ma trận Kiểm Thử Bảo Mật & Rate Limiter (S01 – S07)
+
+*Lệnh chạy*: `pnpm test:security`
+
+| Mã | Tình huống kiểm thử | Thao tác thực tế | Expected | Actual | Trạng thái |
+|:---:|---|---|---|---|:---:|
+| **S01** | 5 Login requests đầu | Gửi 5 request liên tiếp tới `/api/auth/login` | Được xử lý bình thường (200 hoặc 401) | Cả 5 request đều được xử lý và trả về 401/200 | **PASS** |
+| **S02** | Request thứ 6 vượt hạn | Gửi request thứ 6 trong cùng 60 giây | HTTP 429 Too Many Requests | HTTP 429, `message: "Bạn đã gửi quá nhiều yêu cầu..."` | **PASS** |
+| **S03** | Duy trì hạn mức | Kiểm tra response header khi nhận 429 | Có header `retry-after` hoặc `ratelimit-reset` | Header RateLimit phản ánh chính xác thời gian hồi phục | **PASS** |
+| **S04** | Endpoint khác không bị ảnh hưởng | Gọi `GET /api/v1/sinh-vien` trong lúc Login bị 429 | Không chịu giới hạn của loginLimiter | HTTP 200 OK bình thường | **PASS** |
+| **S05** | Kiểm tra Helmet Security Headers | Kiểm tra Headers của `GET /health` | Có các headers bảo mật của Helmet | `x-content-type-options: nosniff`, `x-frame-options: SAMEORIGIN` | **PASS** |
+| **S06** | Login sai trước khi chạm trần | Request thứ 1 với mật khẩu sai | HTTP 401, không cấp JWT | HTTP 401 Unauthorized | **PASS** |
+| **S07** | Phân quyền RBAC Student | Student gọi `DELETE /api/v1/sinh-vien/:maSV` | HTTP 403 Forbidden | HTTP 403, không xóa bản ghi | **PASS** |
+
+**Kết quả Security Testing: 7/7 ca PASS (100%)**
+
+---
+
+## 4. Ma trận Kiểm Thử Docker Vận Hành (D01 – D09)
+
+| Mã | Hạng mục kiểm tra | Thao tác / Lệnh | Expected | Actual | Trạng thái |
+|:---:|---|---|---|---|:---:|
+| **D01** | Backend Container | `docker compose ps` | Trạng thái running (Up) | Running | **PASS** |
+| **D02** | SQL Server Container | Healthcheck `sqlcmd` | Trạng thái healthy | Healthy | **PASS** |
+| **D03** | GET danh sách SinhVien | `GET /api/v1/sinh-vien` qua port 5000 | 200 + dữ liệu SQL thật | 200 + data array + pagination | **PASS** |
+| **D04** | Đăng nhập hợp lệ | `POST /api/auth/login` | 200 + JWT Token | 200 + Access Token | **PASS** |
+| **D05** | Đăng nhập sai | `POST /api/auth/login` | 401 Unauthorized | 401 Unauthorized | **PASS** |
+| **D06** | Rate Limit | Gửi 6 request liên tiếp | 429 Too Many Requests | 429 Too Many Requests | **PASS** |
+| **D07** | Phân trang & Tìm kiếm | `GET ?page=2&limit=2` | Phân trang đúng như Chương 08 | 200, đúng 2 bản ghi trang 2 | **PASS** |
+| **D08** | Profile thiếu Token | `GET /api/auth/profile` | 401 Unauthorized | 401 Unauthorized | **PASS** |
+| **D09** | Lỗi 500 và logging | `GET /api/test-error-500` | 500 an toàn, không lộ secret | 500, log nội bộ tại container | **PASS** |
+
+**Kết quả Docker Testing: 9/9 ca PASS (100%)**
+
+---
+
+## 5. Bộ 5 Ca Kiểm Thử Hồi Quy Toàn Diện (R01 – R05)
+
+| Mã | Hạng mục hồi quy | Lệnh kiểm thử / Thao tác | Expected | Actual | Trạng thái |
+|:---:|---|---|---|---|:---:|
+| **R01** | 5 CRUD SinhVien & RBAC | `pnpm test:auth` (24 ca) | 100% PASS, Student bị chặn DELETE 403 | 24/24 ca PASS (100%) | **PASS** |
+| **R02** | Phân trang & Tìm kiếm | `pnpm test:pagination` (26 ca) | 100% PASS, SQL Server OFFSET/FETCH | 26/26 ca PASS (100%) | **PASS** |
+| **R03** | Global Error Middleware | Bắt lỗi 400, 404, 500 | Đúng chuẩn `{success, status, message, data:null}` | JSON thống nhất 100% | **PASS** |
+| **R04** | Multer Upload & File tĩnh | `pnpm test:upload` (12 ca) | 100% PASS, chặn >2MB (413), check Magic Bytes | 12/12 ca PASS (100%) | **PASS** |
+| **R05** | Frontend & TypeScript Build | `pnpm build` và `cd frontend; pnpm build` | Không có bất kỳ lỗi biên dịch nào | 0 errors cả backend và frontend | **PASS** |
+
+---
+
+## 6. Phân tích các lỗi phát hiện trong quá trình phát triển và cách khắc phục
+
+1. **Lỗi 1: `ReferenceError: jest is not defined` trong môi trường ESM**:
+   - *Triệu chứng*: Khi chạy `node --experimental-vm-modules node_modules/jest/bin/jest.js`, Jest báo lỗi `jest is not defined` tại `jest.clearAllMocks()`.
+   - *Nguyên nhân*: Trong chuẩn module ECMAScript (ESM), các biến toàn cục của Jest không được tự động inject vào phạm vi file như CommonJS.
+   - *Khắc phục*: Thêm lệnh import tường minh từ package `@jest/globals`: `import { jest, describe, test, expect, beforeEach } from '@jest/globals'`.
+2. **Lỗi 2: Thiếu trường `status: 401` trong phản hồi của middleware `isAuth.ts`**:
+   - *Triệu chứng*: Bài kiểm thử `A05` thất bại vì `res.body.status` trả về `undefined` thay vì `401`.
+   - *Nguyên nhân*: Mã nguồn cũ của Chương 07 trả về `{ success: false, message: '...', data: null }` chưa được đồng bộ trường `status` theo chuẩn phản hồi lỗi thống nhất của Chương 08.
+   - *Khắc phục*: Bổ sung trường `status: 401` vào tất cả các điểm thoát lỗi của `isAuth.ts` và `status: 403` vào `isAdmin.ts`. Sau khi sửa, bài test A05 lập tức PASS 100%.

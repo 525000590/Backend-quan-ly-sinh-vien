@@ -1,0 +1,19 @@
+$kind: http-request
+name: P01 - GET /api/v1/sinh-vien mặc định (page=1, limit=10)
+url: "{{baseUrl}}/api/v1/sinh-vien"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code 200', function () { pm.response.to.have.status(200); });
+      const json = pm.response.json();
+      pm.test('Format chuẩn có data[] và pagination', function () {
+        pm.expect(json.success).to.be.true;
+        pm.expect(Array.isArray(json.data)).to.be.true;
+        pm.expect(json.pagination.page).to.eql(1);
+        pm.expect(json.pagination.limit).to.eql(10);
+        pm.expect(json.pagination.totalItems).to.be.at.least(0);
+        pm.expect(json.pagination.totalPages).to.be.at.least(0);
+      });
+    language: text/javascript
+order: 1000

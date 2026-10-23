@@ -1,0 +1,18 @@
+$kind: http-request
+name: P13 - GET ?search=khongco (Không có kết quả)
+url: "{{baseUrl}}/api/v1/sinh-vien?search=khongco_chac_chan_khong_co_123456"
+method: GET
+queryParams:
+  search: khongco_chac_chan_khong_co_123456
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code 200', function () { pm.response.to.have.status(200); });
+      const json = pm.response.json();
+      pm.test('Không tìm thấy: data=[], totalItems=0, totalPages=0', function () {
+        pm.expect(json.data).to.eql([]);
+        pm.expect(json.pagination.totalItems).to.eql(0);
+        pm.expect(json.pagination.totalPages).to.eql(0);
+      });
+    language: text/javascript
+order: 13000

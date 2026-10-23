@@ -1,0 +1,18 @@
+$kind: http-request
+name: P04 - GET ?page=3&limit=2 (Trang cuối)
+url: "{{baseUrl}}/api/v1/sinh-vien?page=3&limit=2"
+method: GET
+queryParams:
+  page: "3"
+  limit: "2"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code 200', function () { pm.response.to.have.status(200); });
+      const json = pm.response.json();
+      pm.test('Trang 3 lấy các bản ghi còn lại', function () {
+        pm.expect(Array.isArray(json.data)).to.be.true;
+        pm.expect(json.pagination.page).to.eql(3);
+      });
+    language: text/javascript
+order: 4000

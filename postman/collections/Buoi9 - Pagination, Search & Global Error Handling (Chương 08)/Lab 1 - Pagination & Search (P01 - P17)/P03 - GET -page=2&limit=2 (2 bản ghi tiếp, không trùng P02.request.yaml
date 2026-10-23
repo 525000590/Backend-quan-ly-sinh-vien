@@ -1,0 +1,18 @@
+$kind: http-request
+name: P03 - GET ?page=2&limit=2 (2 bản ghi tiếp, không trùng P02)
+url: "{{baseUrl}}/api/v1/sinh-vien?page=2&limit=2"
+method: GET
+queryParams:
+  page: "2"
+  limit: "2"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code 200', function () { pm.response.to.have.status(200); });
+      const json = pm.response.json();
+      pm.test('Trang 2 có pagination page=2', function () {
+        pm.expect(json.pagination.page).to.eql(2);
+        pm.expect(json.pagination.limit).to.eql(2);
+      });
+    language: text/javascript
+order: 3000

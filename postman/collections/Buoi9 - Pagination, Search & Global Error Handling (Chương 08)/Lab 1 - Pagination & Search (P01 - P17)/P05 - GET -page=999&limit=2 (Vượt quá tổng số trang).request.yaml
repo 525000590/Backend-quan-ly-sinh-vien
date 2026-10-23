@@ -1,0 +1,19 @@
+$kind: http-request
+name: P05 - GET ?page=999&limit=2 (Vượt quá tổng số trang)
+url: "{{baseUrl}}/api/v1/sinh-vien?page=999&limit=2"
+method: GET
+queryParams:
+  page: "999"
+  limit: "2"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code 200', function () { pm.response.to.have.status(200); });
+      const json = pm.response.json();
+      pm.test('Trang vượt giới hạn trả data=[] và totalItems chính xác', function () {
+        pm.expect(json.data).to.eql([]);
+        pm.expect(json.pagination.page).to.eql(999);
+        pm.expect(json.pagination.totalItems).to.be.at.least(1);
+      });
+    language: text/javascript
+order: 5000

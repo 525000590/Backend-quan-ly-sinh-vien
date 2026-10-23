@@ -1,0 +1,19 @@
+$kind: http-request
+name: E01 - GET ?page=-5 (Lỗi 400 cấu trúc chuẩn)
+url: "{{baseUrl}}/api/v1/sinh-vien?page=-5"
+method: GET
+queryParams:
+  page: "-5"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code 400', function () { pm.response.to.have.status(400); });
+      const json = pm.response.json();
+      pm.test('Response lỗi chuẩn {success:false, status:400, message, data:null}', function () {
+        pm.expect(json.success).to.be.false;
+        pm.expect(json.status).to.eql(400);
+        pm.expect(json.data).to.be.null;
+        pm.expect(Boolean(json.message)).to.be.true;
+      });
+    language: text/javascript
+order: 1000

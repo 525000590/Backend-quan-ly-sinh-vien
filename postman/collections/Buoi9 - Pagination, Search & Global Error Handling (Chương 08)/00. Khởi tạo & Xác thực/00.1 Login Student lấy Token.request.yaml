@@ -1,0 +1,22 @@
+$kind: http-request
+url: "{{baseUrl}}/api/auth/login"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "email": "student.test@example.com",
+      "password": "Student@123"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Login Student thành công 200', function () {
+        pm.response.to.have.status(200);
+      });
+      const res = pm.response.json();
+      pm.collectionVariables.set('studentToken', res.data.accessToken);
+    language: text/javascript
+order: 1000

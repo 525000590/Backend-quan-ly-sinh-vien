@@ -13,6 +13,7 @@ export const isAuth = (req: Request, res: Response, next: NextFunction): void =>
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     res.status(401).json({
       success: false,
+      status: 401,
       message: 'Chưa xác thực hoặc thiếu Bearer Token',
       data: null,
     });
@@ -24,6 +25,7 @@ export const isAuth = (req: Request, res: Response, next: NextFunction): void =>
   if (!token) {
     res.status(401).json({
       success: false,
+      status: 401,
       message: 'Token không được để trống',
       data: null,
     });
@@ -37,6 +39,7 @@ export const isAuth = (req: Request, res: Response, next: NextFunction): void =>
   } catch {
     res.status(401).json({
       success: false,
+      status: 401,
       message: 'Token không hợp lệ hoặc đã hết hạn',
       data: null,
     });

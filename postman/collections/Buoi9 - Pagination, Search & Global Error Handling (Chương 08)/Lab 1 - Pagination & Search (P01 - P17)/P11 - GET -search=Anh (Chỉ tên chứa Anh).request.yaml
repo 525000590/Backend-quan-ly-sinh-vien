@@ -1,0 +1,19 @@
+$kind: http-request
+name: P11 - GET ?search=Anh (Chỉ tên chứa Anh)
+url: "{{baseUrl}}/api/v1/sinh-vien?search=Anh"
+method: GET
+queryParams:
+  search: Anh
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code 200', function () { pm.response.to.have.status(200); });
+      const json = pm.response.json();
+      pm.test('Tất cả sinh viên trả về có họ tên chứa Anh', function () {
+        pm.expect(json.data.length).to.be.at.least(1);
+        json.data.forEach(function(sv) {
+          pm.expect(sv.hoTen.toLowerCase()).to.include('anh');
+        });
+      });
+    language: text/javascript
+order: 11000
