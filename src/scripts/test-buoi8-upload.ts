@@ -42,6 +42,20 @@ async function runTests() {
   await sequelize.authenticate();
   console.log('✓ Kết nối CSDL SQL Server thành công.');
 
+  // Tự động kiểm tra và khởi động server nếu chưa chạy sẵn
+  let internalServer: any = null;
+  try {
+    const res = await fetch(`${BASE_URL}/health`);
+    if (!res.ok) throw new Error();
+  } catch {
+    console.log(`ℹ Server chưa khởi động sẵn, đang tự động khởi chạy trên cổng ${PORT}...`);
+    const { app } = await import('../app.js');
+    await new Promise<void>((resolve) => {
+      internalServer = app.listen(Number(PORT), () => resolve());
+    });
+    console.log('✓ Server test đã sẵn sàng.');
+  }
+
   // Thiết lập tài khoản test Student A và Student B
   let studentA = await User.findOne({ where: { email: 'student.a@example.com' } });
   if (!studentA) {
@@ -376,6 +390,11 @@ async function runTests() {
     console.log('🎉 TOÀN BỘ 12 CA KIỂM THỬ UPLOAD ĐÃ VƯỢT QUA XUẤT SẮC! 🎉');
   }
   console.log('====================================================\n');
+
+  if (internalServer) {
+    internalServer.close();
+  }
+  await sequelize.close();
 
   process.exit(failed === 0 ? 0 : 1);
 }

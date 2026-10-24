@@ -19,23 +19,17 @@ async function runTests() {
   await SinhVien.destroy({ where: { maSV: ['SV098', 'SV099'] } });
   await User.destroy({ where: { email: ['student.test@example.com', 'a01.test@example.com'] } });
 
-  // Đợi server sẵn sàng
-  let serverReady = false;
-  for (let i = 0; i < 10; i++) {
-    try {
-      const res = await fetch(`${BASE_URL}/health`);
-      if (res.ok) {
-        serverReady = true;
-        break;
-      }
-    } catch {
-      await wait(1000);
-    }
-  }
-
-  if (!serverReady) {
-    console.error('Lỗi: Server chưa chạy tại ' + BASE_URL);
-    process.exit(1);
+  // Tự động kiểm tra và khởi động server nếu chưa chạy sẵn
+  let internalServer: any = null;
+  try {
+    const res = await fetch(`${BASE_URL}/health`);
+    if (!res.ok) throw new Error();
+  } catch {
+    console.log('ℹ Server chưa khởi động sẵn, đang tự động khởi chạy trên cổng 5000...');
+    const { app } = await import('../app.js');
+    await new Promise<void>((resolve) => {
+      internalServer = app.listen(5000, () => resolve());
+    });
   }
 
   console.log('✓ Kết nối server thành công.\n');
@@ -368,6 +362,9 @@ async function runTests() {
   console.log('✓ BẢNG B ĐẠT 100% (12/12 CA PASS)\n');
   console.log('🎉 TỔNG KẾT: TOÀN BỘ 24 CA TEST BUỔI 07 ĐÃ VƯỢT QUA XUẤT SẮC! 🎉');
 
+  if (internalServer) {
+    internalServer.close();
+  }
   await sequelize.close();
 }
 
