@@ -9,6 +9,8 @@ export function loggerMiddleware(
   res: Response,
   next: NextFunction
 ): void {
-  console.log(`[LOG] ${req.method} ${req.path}`);
+  if (process.env.NODE_ENV !== 'test') {
+    console.log(`[LOG] ${req.method} ${req.path}`);
+  }
   next();
 }

@@ -85,8 +85,8 @@ app.use('/api/auth', authRoutes);
 // 9. Gắn các tuyến đường API sinh viên
 app.use('/api/v1/sinh-vien', sinhVienRoutes);
 
-// 10. Route mô phỏng lỗi 500 (chỉ bật trong môi trường test/development, không mở trong production)
-if (process.env.NODE_ENV !== 'production') {
+// 10. Route mô phỏng lỗi 500 (chỉ bật trong môi trường test/development)
+if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
   app.get('/api/test-error-500', () => {
     throw new Error('Lỗi database mô phỏng: Connection lost');
   });

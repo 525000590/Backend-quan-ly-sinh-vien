@@ -71,7 +71,9 @@ export const errorMiddleware: ErrorRequestHandler = (err, req, res, next) => {
   }
 
   // 4. Xử lý các lỗi hệ thống hoặc lỗi chưa biết khác (HTTP 500)
-  console.error('[SERVER ERROR]', err);
+  if (process.env.NODE_ENV !== 'test') {
+    console.error('[SERVER ERROR]', err);
+  }
 
   const payload: Record<string, unknown> = {
     success: false,

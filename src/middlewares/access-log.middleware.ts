@@ -10,4 +10,5 @@ const logStream = fs.createWriteStream(logFile, { flags: 'a' });
 
 export const accessLogger = morgan('combined', {
   stream: logStream,
+  skip: () => process.env.NODE_ENV === 'test',
 });
