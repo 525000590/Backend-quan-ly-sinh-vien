@@ -14,6 +14,19 @@ async function runSecurityTests() {
   await sequelize.authenticate();
   console.log('✓ Kết nối CSDL SQL Server thành công.');
 
+  // Tự động kiểm tra và khởi động server nếu người dùng chưa bật pnpm dev
+  let internalServer: any = null;
+  try {
+    await fetch(`${BASE_URL}/health`);
+  } catch {
+    console.log(`ℹ Server chưa khởi động sẵn, đang tự động khởi chạy trên cổng ${PORT}...`);
+    const { app } = await import('../app.js');
+    await new Promise<void>((resolve) => {
+      internalServer = app.listen(Number(PORT), () => resolve());
+    });
+    console.log('✓ Server test đã sẵn sàng.');
+  }
+
   const studentUser = await User.findOne({ where: { email: 'student.test@example.com' } });
   const studentToken = studentUser
     ? generateToken({ id: studentUser.id, role: studentUser.role })
@@ -155,6 +168,11 @@ async function runSecurityTests() {
     console.log('🎉 TOÀN BỘ 7 CA KIỂM THỬ BẢO MẬT S01 - S07 ĐÃ PASS 100%! 🎉');
   }
   console.log('====================================================\n');
+
+  if (internalServer) {
+    internalServer.close();
+  }
+  await sequelize.close();
 
   process.exit(failed === 0 ? 0 : 1);
 }

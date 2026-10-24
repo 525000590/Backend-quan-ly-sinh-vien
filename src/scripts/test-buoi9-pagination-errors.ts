@@ -15,6 +15,19 @@ async function runTests() {
   await sequelize.authenticate();
   console.log('✓ Kết nối CSDL SQL Server thành công.');
 
+  // Tự động kiểm tra và khởi động server nếu người dùng chưa bật pnpm dev
+  let internalServer: any = null;
+  try {
+    await fetch(`${BASE_URL}/health`);
+  } catch {
+    console.log(`ℹ Server chưa khởi động sẵn, đang tự động khởi chạy trên cổng ${PORT}...`);
+    const { app } = await import('../app.js');
+    await new Promise<void>((resolve) => {
+      internalServer = app.listen(Number(PORT), () => resolve());
+    });
+    console.log('✓ Server test đã sẵn sàng.');
+  }
+
   // Đảm bảo có ít nhất 5 sinh viên test với tên có 'Anh'
   const countSV = await SinhVien.count();
   if (countSV < 5) {
@@ -369,6 +382,11 @@ async function runTests() {
     console.log('🎉 TOÀN BỘ CÁC CA KIỂM THỬ CHƯƠNG 08 ĐÃ VƯỢT QUA XUẤT SẮC! 🎉');
   }
   console.log('====================================================\n');
+
+  if (internalServer) {
+    internalServer.close();
+  }
+  await sequelize.close();
 
   process.exit(failed === 0 ? 0 : 1);
 }
